@@ -1,0 +1,272 @@
+# ── Chatbot MS ──
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chatbot-ms
+  namespace: jeewan
+  labels:
+    app: chatbot-ms
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: chatbot-ms
+  template:
+    metadata:
+      labels:
+        app: chatbot-ms
+    spec:
+      containers:
+        - name: chatbot-ms
+          image: jeewan/chatbot-ms:latest
+          ports:
+            - containerPort: 8003
+          envFrom:
+            - configMapRef:
+                name: jeewan-config
+            - secretRef:
+                name: jeewan-secrets
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8003
+            initialDelaySeconds: 10
+            periodSeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: chatbot-ms
+  namespace: jeewan
+spec:
+  selector:
+    app: chatbot-ms
+  ports:
+    - port: 8003
+      targetPort: 8003
+  type: ClusterIP
+---
+# ── Gamification MS ──
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gamification-ms
+  namespace: jeewan
+  labels:
+    app: gamification-ms
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gamification-ms
+  template:
+    metadata:
+      labels:
+        app: gamification-ms
+    spec:
+      containers:
+        - name: gamification-ms
+          image: jeewan/gamification-ms:latest
+          ports:
+            - containerPort: 8004
+          envFrom:
+            - configMapRef:
+                name: jeewan-config
+            - secretRef:
+                name: jeewan-secrets
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "250m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8004
+            initialDelaySeconds: 10
+            periodSeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gamification-ms
+  namespace: jeewan
+spec:
+  selector:
+    app: gamification-ms
+  ports:
+    - port: 8004
+      targetPort: 8004
+  type: ClusterIP
+---
+# ── Maps MS ──
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: maps-ms
+  namespace: jeewan
+  labels:
+    app: maps-ms
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: maps-ms
+  template:
+    metadata:
+      labels:
+        app: maps-ms
+    spec:
+      containers:
+        - name: maps-ms
+          image: jeewan/maps-ms:latest
+          ports:
+            - containerPort: 8005
+          envFrom:
+            - configMapRef:
+                name: jeewan-config
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "250m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8005
+            initialDelaySeconds: 10
+            periodSeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: maps-ms
+  namespace: jeewan
+spec:
+  selector:
+    app: maps-ms
+  ports:
+    - port: 8005
+      targetPort: 8005
+  type: ClusterIP
+---
+# ── Risk MS ──
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: risk-ms
+  namespace: jeewan
+  labels:
+    app: risk-ms
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: risk-ms
+  template:
+    metadata:
+      labels:
+        app: risk-ms
+    spec:
+      containers:
+        - name: risk-ms
+          image: jeewan/risk-ms:latest
+          ports:
+            - containerPort: 8006
+          envFrom:
+            - configMapRef:
+                name: jeewan-config
+            - secretRef:
+                name: jeewan-secrets
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "250m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8006
+            initialDelaySeconds: 10
+            periodSeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: risk-ms
+  namespace: jeewan
+spec:
+  selector:
+    app: risk-ms
+  ports:
+    - port: 8006
+      targetPort: 8006
+  type: ClusterIP
+---
+# ── Admin MS ──
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: admin-ms
+  namespace: jeewan
+  labels:
+    app: admin-ms
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: admin-ms
+  template:
+    metadata:
+      labels:
+        app: admin-ms
+    spec:
+      containers:
+        - name: admin-ms
+          image: jeewan/admin-ms:latest
+          ports:
+            - containerPort: 8007
+          envFrom:
+            - configMapRef:
+                name: jeewan-config
+            - secretRef:
+                name: jeewan-secrets
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "250m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8007
+            initialDelaySeconds: 10
+            periodSeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: admin-ms
+  namespace: jeewan
+spec:
+  selector:
+    app: admin-ms
+  ports:
+    - port: 8007
+      targetPort: 8007
+  type: ClusterIP

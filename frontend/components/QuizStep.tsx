@@ -7,6 +7,7 @@ interface QuizStepProps {
   totalQuestions: number;
   question: string;
   answers: { value: number; label: string; description: string }[];
+  selectedValue?: number;
   onAnswer: (value: number) => void;
   onNext: () => void;
   isAnswered: boolean;
@@ -17,6 +18,7 @@ export default function QuizStep({
   totalQuestions,
   question,
   answers,
+  selectedValue,
   onAnswer,
   onNext,
   isAnswered,
@@ -51,30 +53,33 @@ export default function QuizStep({
 
       {/* Answers */}
       <div className="space-y-2.5 mb-6">
-        {answers.map((answer, idx) => (
-          <button
-            key={idx}
-            data-answer
-            onClick={() => onAnswer(answer.value)}
-            className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
-              isAnswered
-                ? 'border-jeewan-calm-mid bg-jeewan-calm-light text-jeewan-calm'
-                : 'border-border hover:border-jeewan-calm-mid hover:bg-jeewan-calm-light/50 text-foreground'
-            }`}
-          >
-            <div className="flex justify-between items-center">
-              <div>
-                <span className="font-medium text-sm">{answer.label}</span>
-                <span className="text-xs text-jeewan-muted ml-2">{answer.description}</span>
+        {answers.map((answer, idx) => {
+          const isSelected = selectedValue === answer.value;
+          return (
+            <button
+              key={idx}
+              data-answer
+              onClick={() => onAnswer(answer.value)}
+              className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
+                isSelected
+                  ? 'border-jeewan-calm bg-jeewan-calm-light text-jeewan-calm'
+                  : 'border-border hover:border-jeewan-calm-mid hover:bg-jeewan-calm-light/50 text-foreground'
+              }`}
+            >
+              <div className="flex justify-between items-center">
+                <div>
+                  <span className="font-medium text-sm">{answer.label}</span>
+                  <span className="text-xs text-jeewan-muted ml-2">{answer.description}</span>
+                </div>
+                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                  isSelected ? 'border-jeewan-calm bg-jeewan-calm' : 'border-border'
+                }`}>
+                  {isSelected && <div className="w-2 h-2 rounded-full bg-white" />}
+                </div>
               </div>
-              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                isAnswered ? 'border-jeewan-calm bg-jeewan-calm' : 'border-border'
-              }`}>
-                {isAnswered && <div className="w-2 h-2 rounded-full bg-white" />}
-              </div>
-            </div>
-          </button>
-        ))}
+            </button>
+          );
+        })}
       </div>
 
       {/* Next Button */}

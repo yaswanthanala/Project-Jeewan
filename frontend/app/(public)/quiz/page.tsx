@@ -58,9 +58,9 @@ export default function QuizPage() {
 
   if (quizState.isComplete) {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="max-w-lg mx-auto px-4 py-12">
-          <div id="quiz-result" className="bg-card border border-border rounded-2xl p-6 md:p-8 text-center animate-float-up">
+      <div className="min-h-screen bg-gradient-to-b from-background to-muted/30">
+        <div className="max-w-3xl mx-auto px-4 py-12">
+          <div id="quiz-result" className="bg-card border border-border shadow-xl rounded-3xl p-8 md:p-12 text-center animate-float-up">
             <h1 className="text-2xl font-bold text-foreground mb-6">Your Results</h1>
 
             <div className="mb-6 p-6 bg-gradient-to-br from-jeewan-calm/10 to-jeewan-calm/5 rounded-2xl">
@@ -114,10 +114,10 @@ export default function QuizPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-lg mx-auto px-4 py-8">
+    <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
+      <div className="max-w-3xl mx-auto px-4 py-10">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-8">
           <Link href="/" className="flex items-center gap-2 text-sm text-jeewan-muted hover:text-jeewan-calm transition">
             <ArrowLeft className="w-4 h-4" /> Back
           </Link>
@@ -128,12 +128,20 @@ export default function QuizPage() {
         </div>
 
         {/* Quiz Card */}
-        <div className="bg-card border border-border rounded-2xl p-5 md:p-6">
+        <div className="bg-card border border-border shadow-lg rounded-3xl p-6 md:p-10 mb-6 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-1 bg-muted">
+            <div 
+              className="h-full bg-jeewan-calm transition-all duration-500" 
+              style={{ width: `${((quizState.currentQuestion + 1) / DAST_10_QUESTIONS.length) * 100}%` }} 
+            />
+          </div>
+          
           <QuizStep
             questionNumber={quizState.currentQuestion + 1}
             totalQuestions={DAST_10_QUESTIONS.length}
             question={currentQuestion.question}
             answers={currentQuestion.answers}
+            selectedValue={selectedAnswer}
             onAnswer={handleAnswer}
             onNext={handleNext}
             isAnswered={selectedAnswer !== undefined}

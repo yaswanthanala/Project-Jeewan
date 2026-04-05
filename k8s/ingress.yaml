@@ -1,0 +1,99 @@
+# ── Nginx Ingress — API Gateway ──
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: jeewan-ingress
+  namespace: jeewan
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/cors-allow-origin: "*"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, PUT, DELETE, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-headers: "Content-Type, Authorization"
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: jeewan.local
+      http:
+        paths:
+          - path: /api/auth(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: auth-ms
+                port:
+                  number: 8001
+          - path: /api/sos(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: sos-ms
+                port:
+                  number: 8002
+          - path: /api/chat(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: chatbot-ms
+                port:
+                  number: 8003
+          - path: /api/game(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: gamification-ms
+                port:
+                  number: 8004
+          - path: /api/maps(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: maps-ms
+                port:
+                  number: 8005
+          - path: /api/risk(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: risk-ms
+                port:
+                  number: 8006
+          - path: /api/admin(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: admin-ms
+                port:
+                  number: 8007
+---
+# ── ConfigMap ──
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: jeewan-config
+  namespace: jeewan
+data:
+  DATABASE_URL: "postgresql+asyncpg://jeewan:jeewan_secret@postgres:5432/jeewan_db"
+  REDIS_URL: "redis://redis:6379/0"
+  FIREBASE_PROJECT_ID: "jeewan-platform"
+  AUTH_MS_URL: "http://auth-ms:8001"
+  SOS_MS_URL: "http://sos-ms:8002"
+  CHATBOT_MS_URL: "http://chatbot-ms:8003"
+  GAMIFICATION_MS_URL: "http://gamification-ms:8004"
+  MAPS_MS_URL: "http://maps-ms:8005"
+  RISK_MS_URL: "http://risk-ms:8006"
+  ADMIN_MS_URL: "http://admin-ms:8007"
+---
+# ── Secrets (base64 encoded — replace in production) ──
+apiVersion: v1
+kind: Secret
+metadata:
+  name: jeewan-secrets
+  namespace: jeewan
+type: Opaque
+data:
+  # echo -n "value" | base64
+  JWT_SECRET: amVld2FuLXN1cGVyLXNlY3JldC1rZXktY2hhbmdlLWluLXByb2R1Y3Rpb24=
+  SARVAM_API_KEY: c2tfYXl6bTlrZzZfVnhDSjkzbURSZklUQ2g5VmpLVmhqZkcx
+  MONGO_URI: bW9uZ29kYitzcnY6Ly9qZWV3YW5fYWRtaW46amVld2FuJTQwMzY5QGplZXdhbmMxLmF4cHBtcXUubW9uZ29kYi5uZXQvamVld2FuX3RpcG9mZnM=

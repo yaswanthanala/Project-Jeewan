@@ -1,0 +1,6 @@
+pytest==8.3.5
+pytest-asyncio==0.25.3
+httpx==0.28.1
+selenium==4.28.1
+webdriver-manager==4.0.2
+pytest-cov==6.1.1

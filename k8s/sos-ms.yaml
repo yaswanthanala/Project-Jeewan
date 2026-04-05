@@ -1,0 +1,60 @@
+# ── SOS MS ──
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sos-ms
+  namespace: jeewan
+  labels:
+    app: sos-ms
+spec:
+  replicas: 2  # High availability for emergency service
+  selector:
+    matchLabels:
+      app: sos-ms
+  template:
+    metadata:
+      labels:
+        app: sos-ms
+    spec:
+      containers:
+        - name: sos-ms
+          image: jeewan/sos-ms:latest
+          ports:
+            - containerPort: 8002
+          envFrom:
+            - configMapRef:
+                name: jeewan-config
+            - secretRef:
+                name: jeewan-secrets
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "250m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8002
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8002
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sos-ms
+  namespace: jeewan
+spec:
+  selector:
+    app: sos-ms
+  ports:
+    - port: 8002
+      targetPort: 8002
+  type: ClusterIP

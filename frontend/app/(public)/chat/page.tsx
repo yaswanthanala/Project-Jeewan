@@ -1,194 +1,262 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Send, Loader2, Shield } from 'lucide-react';
+import { Send, Loader2, Shield, Trash2, AlertTriangle, MessageSquareHeart } from 'lucide-react';
+import { useAuth } from '@/lib/AuthContext';
+import Link from 'next/link';
 
 interface Message {
   id: string;
   type: 'user' | 'bot';
   content: string;
   timestamp: Date;
+  isCrisis?: boolean;
 }
 
-const INITIAL_GREETING = "Hi, I'm JEEWAN. You can talk to me about anything — I'm here to listen, not judge. What's on your mind today?";
+const INITIAL_GREETING = "Hello! I'm **JEEWAN**, your AI companion for drug awareness and support. 💙\n\nYou can talk to me about anything — peer pressure, addiction concerns, recovery, or just how you're feeling. I'm here to listen, not judge.\n\nHow can I help you today?";
 
 const QUICK_REPLIES = [
-  'How to say no to friends',
-  'Signs of addiction',
-  'I need urgent help',
+  { text: 'Am I addicted?', icon: '🔍' },
+  { text: 'How to say no to friends', icon: '🛡️' },
+  { text: 'What is withdrawal?', icon: '💊' },
+  { text: 'Legal rights in India', icon: '⚖️' },
+  { text: 'I need urgent help', icon: '🆘' },
+  { text: 'Take risk assessment quiz', icon: '📋' },
 ];
 
-const BOT_RESPONSES: Record<string, string[]> = {
-  default: [
-    "I understand. Tell me more about what you're experiencing.",
-    "That sounds challenging. Would you like to talk about it?",
-    "I'm here to listen. Take your time.",
-  ],
-  help: [
-    "I'm glad you're reaching out. Here's how I can help:\n\n• Listen to your concerns\n• Provide coping strategies\n• Connect you with professionals\n• Answer questions about addiction\n\nWhat would help most right now?",
-  ],
-  sad: [
-    "It sounds like you're going through a difficult time. These feelings are valid. Would you like to talk about what's making you feel this way?",
-  ],
-  suicidal: [
-    "I care about your safety. If you're having thoughts of harm, please reach out immediately:\n\n📞 Call 112 (Emergency)\n📞 iCall Helpline: 9152987821\n\nYou're not alone. Would you like me to connect you with professional help?",
-  ],
-  recovery: [
-    "That's wonderful! Recovery is a journey, and every step forward counts. Keep celebrating these wins! What's been helping you stay strong?",
-  ],
-  friends: [
-    "Peer pressure is really hard, especially when it feels like everyone is doing it. Here are some strategies:\n\n• Be firm and direct: \"No thanks, I'm good\"\n• Change the subject\n• Suggest an alternative activity\n• Walk away if needed\n\nRemember, real friends respect your choices.",
-  ],
-  signs: [
-    "Common signs of addiction include:\n\n• Increased tolerance (needing more)\n• Withdrawal symptoms when stopping\n• Loss of control over use\n• Neglecting responsibilities\n• Continued use despite problems\n• Changes in behavior or mood\n\nWould you like to take our risk assessment quiz?",
-  ],
-};
+const CHAT_API_URL = process.env.NEXT_PUBLIC_CHAT_URL || 'http://localhost:8003';
 
 export default function ChatPage() {
+  const { user } = useAuth();
+  const sessionId = user?.uid || `anon-${Date.now()}`;
+
   const [messages, setMessages] = useState<Message[]>([
     { id: '0', type: 'bot', content: INITIAL_GREETING, timestamp: new Date() },
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showQuickReplies, setShowQuickReplies] = useState(true);
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
+  // Safe manual scroll to be called exactly when needed, preventing aggressive mid-reading jumps
+  const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
-  const getBotResponse = (userMessage: string): string => {
-    const lowerMessage = userMessage.toLowerCase();
-    if (lowerMessage.includes('help') || lowerMessage.includes('support')) return BOT_RESPONSES.help[0];
-    if (lowerMessage.includes('say no') || lowerMessage.includes('friends') || lowerMessage.includes('peer')) return BOT_RESPONSES.friends[0];
-    if (lowerMessage.includes('sign') || lowerMessage.includes('symptom') || lowerMessage.includes('addiction')) return BOT_RESPONSES.signs[0];
-    if (lowerMessage.includes('sad') || lowerMessage.includes('depressed')) return BOT_RESPONSES.sad[0];
-    if (lowerMessage.includes('suicide') || lowerMessage.includes('harm') || lowerMessage.includes('urgent')) return BOT_RESPONSES.suicidal[0];
-    if (lowerMessage.includes('recover') || lowerMessage.includes('clean') || lowerMessage.includes('sober')) return BOT_RESPONSES.recovery[0];
-    return BOT_RESPONSES.default[Math.floor(Math.random() * BOT_RESPONSES.default.length)];
   };
 
+  // Load history from backend on mount
+  useEffect(() => {
+    async function loadHistory() {
+      try {
+        const res = await fetch(`${CHAT_API_URL}/chat/history?session_id=${sessionId}`);
+        const data = await res.json();
+        if (data.messages?.length) {
+          const historyMsgs: Message[] = data.messages.map((m: any, i: number) => ({
+            id: `hist-${i}`,
+            type: m.role === 'user' ? 'user' : 'bot',
+            content: m.content,
+            timestamp: new Date(),
+          }));
+          setMessages([{ id: '0', type: 'bot', content: INITIAL_GREETING, timestamp: new Date() }, ...historyMsgs]);
+          setShowQuickReplies(false);
+          // Scroll to bottom only on initial load
+          setTimeout(scrollToBottom, 100);
+        }
+      } catch {}
+    }
+    loadHistory();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const sendMessage = async (text: string) => {
-    if (!text.trim()) return;
+    if (!text.trim() || isLoading) return;
+    
     const userMessage: Message = { id: Date.now().toString(), type: 'user', content: text, timestamp: new Date() };
     setMessages((prev) => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
+    setShowQuickReplies(false);
+    
+    // Auto-scroll so the user sees their own message appear instantly
+    setTimeout(scrollToBottom, 50);
 
     try {
-      // Try Chatbot MS API first
-      const res = await fetch('http://localhost:8003/chat/send', {
+      const res = await fetch(`${CHAT_API_URL}/chat/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, session_id: 'web-user' }),
+        body: JSON.stringify({ text, session_id: sessionId }),
       });
       const data = await res.json();
-      const botResponse: Message = { id: (Date.now() + 1).toString(), type: 'bot', content: data.response || getBotResponse(text), timestamp: new Date() };
+      
+      const botResponse: Message = {
+        id: (Date.now() + 1).toString(),
+        type: 'bot',
+        content: data.response || "I'm here for you. Could you tell me more?",
+        timestamp: new Date(),
+        isCrisis: data.is_crisis,
+      };
+      
       setMessages((prev) => [...prev, botResponse]);
+
+      // Smart auto-scroll for bot reply: only scroll if user hasn't scrolled up manually
+      setTimeout(() => {
+        if (chatContainerRef.current) {
+          const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
+          const isNearBottom = scrollHeight - scrollTop - clientHeight < 150;
+          if (isNearBottom) scrollToBottom();
+        }
+      }, 50);
+
     } catch {
-      // Fallback to local responses if backend is down
-      const botResponse: Message = { id: (Date.now() + 1).toString(), type: 'bot', content: getBotResponse(text), timestamp: new Date() };
-      setMessages((prev) => [...prev, botResponse]);
+      const errorMsg: Message = {
+        id: (Date.now() + 1).toString(),
+        type: 'bot',
+        content: "I'm having trouble connecting right now. If you need immediate help, please call **9152987821** (iCall Helpline).",
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, errorMsg]);
     }
+    
     setIsLoading(false);
+    inputRef.current?.focus();
+  };
+
+  const clearChat = async () => {
+    try {
+      await fetch(`${CHAT_API_URL}/chat/clear?session_id=${sessionId}`, { method: 'POST' });
+    } catch {}
+    setMessages([{ id: '0', type: 'bot', content: INITIAL_GREETING, timestamp: new Date() }]);
+    setShowQuickReplies(true);
+  };
+
+  const formatMessage = (text: string) => {
+    return text
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\n/g, '<br/>');
   };
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-2xl mx-auto px-4 py-6">
-        <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm flex flex-col" style={{ height: 'calc(100vh - 220px)', minHeight: '500px' }}>
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        <div className="bg-card border border-border rounded-3xl overflow-hidden shadow-lg flex flex-col" style={{ height: 'calc(100vh - 150px)', minHeight: '600px' }}>
+          
           {/* Header */}
-          <div className="border-b border-border px-4 py-3 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-full bg-jeewan-calm flex items-center justify-center text-white text-sm font-bold">J</div>
+          <div className="border-b border-border bg-gradient-to-r from-jeewan-calm/10 to-transparent px-6 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-jeewan-calm flex items-center justify-center text-white shadow-md">
+                <MessageSquareHeart className="w-6 h-6" />
+              </div>
               <div>
-                <h1 className="font-bold text-sm text-foreground">JEEWAN Assistant</h1>
-                <p className="text-xs text-jeewan-nature flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-jeewan-nature inline-block" />
-                  Online — always here for you
+                <h1 className="font-bold text-lg text-foreground">JEEWAN AI Counsellor</h1>
+                <p className="text-sm text-jeewan-nature flex items-center gap-1.5 font-medium mt-0.5">
+                  <span className="w-2 h-2 rounded-full bg-jeewan-nature inline-block animate-pulse" />
+                  {isLoading ? 'JEEWAN is typing...' : 'Online — Private & Secure'}
                 </p>
               </div>
             </div>
-            <span className="flex items-center gap-1 text-[10px] bg-muted text-jeewan-muted px-2.5 py-1 rounded-full font-medium">
-              <Shield className="w-3 h-3" /> 100% private
-            </span>
+            <div className="flex items-center gap-3">
+              <span className="flex items-center gap-1.5 text-xs bg-muted text-jeewan-muted px-3 py-1.5 rounded-full font-bold shadow-inner">
+                <Shield className="w-3.5 h-3.5" /> Confidential
+              </span>
+              <button 
+                onClick={clearChat} 
+                className="p-2 rounded-xl hover:bg-red-500/10 hover:text-red-500 text-jeewan-muted transition" 
+                title="Clear chat and restart"
+              >
+                <Trash2 className="w-5 h-5" />
+              </button>
+            </div>
           </div>
 
-          {/* Messages */}
-          <div id="chat-messages" className="flex-1 overflow-y-auto p-4 space-y-3">
+          {/* Messages Area */}
+          <div ref={chatContainerRef} className="flex-1 overflow-y-auto px-6 py-6 space-y-6 bg-texture-subtle scroll-smooth">
             {messages.map((msg) => (
-              <div key={msg.id} className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'} animate-float-up`}>
-                {msg.type === 'bot' && (
-                  <div className="w-7 h-7 rounded-full bg-jeewan-calm flex-shrink-0 mr-2 mt-1" />
-                )}
-                <div className={`max-w-[75%] px-4 py-3 text-sm whitespace-pre-wrap ${
+              <div key={msg.id} className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}>
+                <div className={`max-w-[75%] rounded-3xl px-5 py-4 shadow-sm ${
                   msg.type === 'user'
-                    ? 'bg-jeewan-calm text-white rounded-[16px_0_16px_16px]'
-                    : 'bg-jeewan-calm-light dark:bg-jeewan-calm-light text-jeewan-ink2 dark:text-foreground rounded-[0_16px_16px_16px]'
+                    ? 'bg-jeewan-calm text-white rounded-br-md shadow-jeewan-calm/20'
+                    : msg.isCrisis
+                      ? 'bg-jeewan-warn-light border-2 border-jeewan-warn/30 text-foreground rounded-bl-md'
+                      : 'bg-surface border border-border text-foreground rounded-bl-md shadow-sm backdrop-blur-md'
                 }`}>
-                  {msg.content}
-                  <span className="block text-[10px] opacity-60 mt-1">
+                  {msg.isCrisis && (
+                    <div className="flex items-center gap-2 text-jeewan-warn text-sm font-bold mb-3 border-b border-jeewan-warn/20 pb-2">
+                      <AlertTriangle className="w-4 h-4" /> Crisis Protocol Activated
+                    </div>
+                  )}
+                  <div className="text-[15px] leading-relaxed tracking-wide" dangerouslySetInnerHTML={{ __html: formatMessage(msg.content) }} />
+                  <p className={`text-[10px] mt-2 font-medium ${msg.type === 'user' ? 'text-white/60 text-right' : 'text-jeewan-muted text-left'}`}>
                     {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </span>
+                  </p>
                 </div>
               </div>
             ))}
 
             {isLoading && (
               <div className="flex justify-start">
-                <div className="w-7 h-7 rounded-full bg-jeewan-calm flex-shrink-0 mr-2 mt-1" />
-                <div className="bg-jeewan-surface dark:bg-muted rounded-[0_16px_16px_16px] px-4 py-3 flex items-center gap-1.5">
-                  <div className="w-2 h-2 rounded-full bg-jeewan-muted animate-dot-bounce" />
-                  <div className="w-2 h-2 rounded-full bg-jeewan-muted animate-dot-bounce" style={{ animationDelay: '0.15s' }} />
-                  <div className="w-2 h-2 rounded-full bg-jeewan-muted animate-dot-bounce" style={{ animationDelay: '0.3s' }} />
+                <div className="bg-surface border border-border rounded-3xl rounded-bl-md px-5 py-5 shadow-sm">
+                  <div className="flex gap-2">
+                    <div className="w-2.5 h-2.5 bg-jeewan-calm/60 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <div className="w-2.5 h-2.5 bg-jeewan-calm/60 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <div className="w-2.5 h-2.5 bg-jeewan-calm/60 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                  </div>
                 </div>
               </div>
             )}
-
-            <div ref={messagesEndRef} />
+            
+            {/* Invisible div for targeted scrolling */}
+            <div ref={messagesEndRef} className="h-1" />
           </div>
 
           {/* Quick Replies */}
-          {messages.length <= 2 && (
-            <div className="px-4 pb-2 flex gap-2 flex-wrap">
-              {QUICK_REPLIES.map((text, i) => (
-                <button
-                  key={i}
-                  onClick={() => sendMessage(text)}
-                  className="px-3 py-1.5 rounded-full border border-jeewan-calm-mid text-jeewan-calm text-xs font-medium hover:bg-jeewan-calm-light transition"
-                >
-                  {text}
-                </button>
-              ))}
+          {showQuickReplies && !isLoading && (
+            <div className="px-6 pb-4 bg-gradient-to-t from-background to-transparent pt-4">
+              <div className="flex flex-wrap gap-2">
+                {QUICK_REPLIES.map((qr) => (
+                  <button
+                    key={qr.text}
+                    onClick={() => sendMessage(qr.text)}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-full border border-border bg-card text-sm font-semibold text-foreground hover:border-jeewan-calm hover:bg-jeewan-calm-light hover:text-jeewan-calm shadow-sm transition-all hover:scale-105"
+                  >
+                    <span className="text-base">{qr.icon}</span> {qr.text}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
-          {/* Input */}
-          <div className="border-t border-border p-3 flex gap-2">
-            <input
-              id="chat-input"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), sendMessage(input))}
-              placeholder="Type your message..."
-              disabled={isLoading}
-              className="flex-1 bg-jeewan-surface dark:bg-muted border border-border rounded-full px-4 py-2.5 text-sm focus:border-jeewan-calm focus:ring-1 focus:ring-jeewan-calm/20 transition placeholder:text-jeewan-muted"
-            />
-            <button
-              id="chat-send"
-              onClick={() => sendMessage(input)}
-              disabled={isLoading || !input.trim()}
-              className="w-10 h-10 bg-jeewan-calm hover:bg-jeewan-calm/90 text-white rounded-full flex items-center justify-center transition disabled:opacity-40"
+          {/* Expanded Input Area */}
+          <div className="border-t border-border p-5 bg-card">
+            <form
+              onSubmit={(e) => { e.preventDefault(); sendMessage(input); }}
+              className="flex items-center gap-3 relative"
             >
-              <Send className="w-4 h-4" />
-            </button>
+              <input
+                ref={inputRef}
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Message JEEWAN... (e.g. I need advice about peer pressure)"
+                className="flex-1 p-4 pl-6 rounded-full border border-border bg-surface text-foreground text-[15px] focus:border-jeewan-calm focus:ring-4 focus:ring-jeewan-calm/10 transition outline-none shadow-inner"
+                disabled={isLoading}
+                autoFocus
+              />
+              <button
+                type="submit"
+                disabled={isLoading || !input.trim()}
+                className="p-4 rounded-full bg-jeewan-calm text-white shadow-xl shadow-jeewan-calm/20 hover:bg-blue-600 hover:scale-105 transition-all disabled:opacity-40 disabled:hover:scale-100 disabled:shadow-none absolute right-1 top-1 bottom-1 flex items-center justify-center my-auto aspect-square"
+              >
+                {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5 ml-1" />}
+              </button>
+            </form>
+            {user && (
+              <p className="text-xs text-jeewan-muted mt-3 text-center font-medium">
+                Logged in securely as <span className="text-foreground">{user.displayName || user.email}</span>
+              </p>
+            )}
           </div>
-        </div>
-
-        {/* Crisis Note */}
-        <div className="mt-4 p-3 bg-jeewan-warn-light border border-jeewan-warn/30 rounded-xl">
-          <p className="text-xs text-jeewan-ink2 dark:text-jeewan-muted">
-            <strong>Note:</strong> This AI provides support and guidance. For emergencies, call <a href="tel:112" className="font-bold text-jeewan-calm">112</a> or iCall: <a href="tel:9152987821" className="font-bold text-jeewan-calm">9152987821</a>
-          </p>
         </div>
       </div>
     </div>
