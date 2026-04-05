@@ -1,11 +1,43 @@
 'use client';
 
+import { useState, useEffect } from 'react';
+import { adminAPI } from '@/lib/api';
+
 export default function AdminPage() {
-  const flaggedCases = [
+  const [flaggedCases, setFlaggedCases] = useState([
     { id: 2847, detail: 'Quiz score: 9/10 · College: NIT AP', status: 'pending' },
     { id: 2846, detail: 'SOS triggered · Visakhapatnam', status: 'resolved' },
     { id: 2845, detail: 'Quiz score: 8/10 · College: JNTU', status: 'pending' },
-  ];
+  ]);
+
+  const [stats, setStats] = useState({ flagged: 7, active: '1,240', quizzes: 156, sos: 42 });
+
+  useEffect(() => {
+    async function fetchAdmin() {
+      try {
+        const [statsData, casesData] = await Promise.all([
+          adminAPI.getStats(),
+          adminAPI.getCases(),
+        ]);
+        if (statsData) {
+          setStats({
+            flagged: statsData.high_risk_flagged || 7,
+            active: (statsData.active_today || 342).toLocaleString(),
+            quizzes: statsData.quizzes_completed || 156,
+            sos: statsData.sos_triggers_today || 3,
+          });
+        }
+        if (casesData?.cases?.length) {
+          setFlaggedCases(casesData.cases.map((c: any) => ({
+            id: c.case_id,
+            detail: `${c.source}: ${c.score ? `Score ${c.score}` : 'Alert'} · ${c.institution || 'Unknown'}`,
+            status: c.status,
+          })));
+        }
+      } catch {}
+    }
+    fetchAdmin();
+  }, []);
 
   return (
     <div className="min-h-screen bg-background">
@@ -22,10 +54,10 @@ export default function AdminPage() {
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
           {[
-            { value: 7, label: 'Flagged cases today', color: 'text-jeewan-warn', bg: 'bg-jeewan-warn-light' },
-            { value: '1,240', label: 'Active users this week', color: 'text-jeewan-calm', bg: 'bg-jeewan-calm-light' },
-            { value: 156, label: 'Quiz completions', color: 'text-jeewan-nature', bg: 'bg-jeewan-nature-light' },
-            { value: 42, label: 'SOS triggers', color: 'text-jeewan-warn', bg: 'bg-jeewan-warn-light' },
+            { value: stats.flagged, label: 'Flagged cases today', color: 'text-jeewan-warn', bg: 'bg-jeewan-warn-light' },
+            { value: stats.active, label: 'Active users this week', color: 'text-jeewan-calm', bg: 'bg-jeewan-calm-light' },
+            { value: stats.quizzes, label: 'Quiz completions', color: 'text-jeewan-nature', bg: 'bg-jeewan-nature-light' },
+            { value: stats.sos, label: 'SOS triggers', color: 'text-jeewan-warn', bg: 'bg-jeewan-warn-light' },
           ].map((stat, i) => (
             <div key={i} className={`${stat.bg} rounded-xl p-4 text-center`}>
               <div className={`text-2xl font-bold ${stat.color}`}>{stat.value}</div>

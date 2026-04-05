@@ -1,8 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { gameAPI } from '@/lib/api';
 
-const LEADERBOARD = [
+interface LeaderboardEntry {
+  rank: number;
+  name?: string;
+  institution?: string;
+  students?: number;
+  points: number;
+  badge?: string;
+  change?: string;
+}
+
+const FALLBACK_LEADERBOARD: LeaderboardEntry[] = [
   { rank: 1, name: 'NIT Andhra Pradesh', students: 842, points: 98240, badge: '🥇', change: '↑ 1' },
   { rank: 2, name: 'IIT Tirupati', students: 621, points: 74500, badge: '🥈', change: '—' },
   { rank: 3, name: 'JNTU Kakinada', students: 510, points: 62100, badge: '🥉', change: '↑ 2' },
@@ -14,6 +25,27 @@ const LEADERBOARD = [
 const USER_COLLEGE = { rank: 7, name: 'Your College', students: 234, points: 28400 };
 
 export default function LeaderboardPage() {
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>(FALLBACK_LEADERBOARD);
+
+  useEffect(() => {
+    async function fetchLeaderboard() {
+      try {
+        const data = await gameAPI.getLeaderboard();
+        if (data?.leaderboard?.length) {
+          const badges = ['🥇', '🥈', '🥉'];
+          setLeaderboard(data.leaderboard.map((entry: any, i: number) => ({
+            rank: entry.rank,
+            name: entry.institution,
+            points: entry.points,
+            badge: badges[i] || undefined,
+          })));
+        }
+      } catch {
+        // Keep fallback data
+      }
+    }
+    fetchLeaderboard();
+  }, []);
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-3xl mx-auto px-4 py-8">
@@ -28,7 +60,7 @@ export default function LeaderboardPage() {
 
         {/* Rankings */}
         <div className="space-y-2.5 mb-4">
-          {LEADERBOARD.map((inst) => (
+          {leaderboard.map((inst: LeaderboardEntry) => (
             <div key={inst.rank} className={`flex items-center gap-3 p-4 rounded-2xl border transition ${
               inst.rank === 1 ? 'bg-gradient-to-r from-jeewan-amber-light to-white dark:to-card border-[#FAC775]' : 'bg-card border-border'
             }`}>

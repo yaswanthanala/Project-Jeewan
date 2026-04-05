@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import QuizStep from '@/components/QuizStep';
 import GetHelpModal from '@/components/GetHelpModal';
 import { Shield, ArrowLeft } from 'lucide-react';
+import { riskAPI, getUser } from '@/lib/api';
 
 const DAST_10_QUESTIONS = [
   { id: 1, question: 'Have you used drugs other than those required for medical reasons?', answers: [{ value: 0, label: 'Never', description: 'No recreational use' }, { value: 1, label: 'Once or twice', description: 'Rare occurrence' }, { value: 2, label: 'Monthly', description: 'Occasional use' }, { value: 3, label: 'Weekly or more', description: 'Frequent use' }] },
@@ -22,6 +23,7 @@ const DAST_10_QUESTIONS = [
 export default function QuizPage() {
   const [quizState, setQuizState] = useState({ currentQuestion: 0, answers: [] as number[], isComplete: false });
   const [showGetHelpModal, setShowGetHelpModal] = useState(false);
+  const [serverResult, setServerResult] = useState<{ risk_level: string; recommendation: string; score: number } | null>(null);
 
   const currentQuestion = DAST_10_QUESTIONS[quizState.currentQuestion];
   const selectedAnswer = quizState.answers[quizState.currentQuestion];
@@ -37,15 +39,21 @@ export default function QuizPage() {
       setQuizState({ ...quizState, currentQuestion: quizState.currentQuestion + 1 });
     } else {
       setQuizState({ ...quizState, isComplete: true });
+      // Submit to Risk MS
+      const user = getUser();
+      riskAPI.assess(quizState.answers, user?.id || 'anonymous', user?.institution || '')
+        .then((data) => { if (data) setServerResult(data); })
+        .catch(() => {});
     }
   };
 
-  const totalScore = quizState.answers.reduce((sum, val) => sum + val, 0);
-  const riskLevel = totalScore > 6 ? 'high' : totalScore > 3 ? 'moderate' : 'low';
+  const totalScore = serverResult?.score ?? quizState.answers.reduce((sum, val) => sum + val, 0);
+  const riskLevel = serverResult?.risk_level ?? (totalScore > 6 ? 'high' : totalScore > 3 ? 'moderate' : 'low');
 
   const handleRestart = () => {
     setQuizState({ currentQuestion: 0, answers: [], isComplete: false });
     setShowGetHelpModal(false);
+    setServerResult(null);
   };
 
   if (quizState.isComplete) {

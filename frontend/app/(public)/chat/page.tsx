@@ -67,18 +67,29 @@ export default function ChatPage() {
     return BOT_RESPONSES.default[Math.floor(Math.random() * BOT_RESPONSES.default.length)];
   };
 
-  const sendMessage = (text: string) => {
+  const sendMessage = async (text: string) => {
     if (!text.trim()) return;
     const userMessage: Message = { id: Date.now().toString(), type: 'user', content: text, timestamp: new Date() };
     setMessages((prev) => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
 
-    setTimeout(() => {
+    try {
+      // Try Chatbot MS API first
+      const res = await fetch('http://localhost:8003/chat/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, session_id: 'web-user' }),
+      });
+      const data = await res.json();
+      const botResponse: Message = { id: (Date.now() + 1).toString(), type: 'bot', content: data.response || getBotResponse(text), timestamp: new Date() };
+      setMessages((prev) => [...prev, botResponse]);
+    } catch {
+      // Fallback to local responses if backend is down
       const botResponse: Message = { id: (Date.now() + 1).toString(), type: 'bot', content: getBotResponse(text), timestamp: new Date() };
       setMessages((prev) => [...prev, botResponse]);
-      setIsLoading(false);
-    }, 600 + Math.random() * 1200);
+    }
+    setIsLoading(false);
   };
 
   return (

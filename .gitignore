@@ -55,3 +55,27 @@ logs/
 __v0_runtime_loader.js
 __v0_devtools.tsx
 __v0_jsx-dev-runtime.ts
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+.pytest_cache/
+htmlcov/
+.coverage
+services/*/coverage.xml
+
+# Virtual Environments
+venv/
+.venv/
+env/
+
+# Firebase
+firebase-service-account.json
+**/firebase-service-account.json
+

@@ -1,8 +1,10 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { Menu, X, Home, ClipboardList, MessageCircle, MapPin, BookHeart, Shield, AlertTriangle, Globe, User, LayoutDashboard, Trophy, CalendarCheck, Camera, Building2, Heart, Stethoscope } from 'lucide-react';
+import { Menu, X, Home, ClipboardList, MessageCircle, MapPin, BookHeart, Shield, AlertTriangle, Globe, User, LayoutDashboard, Trophy, CalendarCheck, Camera, Building2, Heart, Stethoscope, LogOut } from 'lucide-react';
+import { useAuth } from '@/lib/AuthContext';
 
 const navLinks = [
   { href: '/', label: 'Home', icon: Home },
@@ -14,6 +16,14 @@ const navLinks = [
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
+  const { user, logout, loading } = useAuth();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    await logout();
+    setIsOpen(false);
+    router.push('/');
+  };
 
   return (
     <nav className="sticky top-0 z-50 bg-white/80 dark:bg-[#0d1117]/80 glass border-b border-border">
@@ -51,14 +61,37 @@ export default function Navbar() {
               <span>EN</span>
             </button>
 
-            {/* Login */}
-            <Link
-              href="/login"
-              className="hidden md:flex items-center gap-1.5 px-4 py-2 rounded-lg bg-jeewan-calm-light text-jeewan-calm hover:bg-jeewan-calm hover:text-white font-semibold text-sm transition-all"
-            >
-              <User className="w-4 h-4" />
-              Login
-            </Link>
+            {/* Auth Buttons — Desktop */}
+            {user ? (
+              <div className="hidden md:flex items-center gap-2">
+                <Link
+                  href="/dashboard"
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-foreground hover:bg-muted transition"
+                >
+                  {user.photoURL ? (
+                    <img src={user.photoURL} alt="" className="w-6 h-6 rounded-full" />
+                  ) : (
+                    <User className="w-4 h-4" />
+                  )}
+                  <span className="max-w-[100px] truncate">{user.displayName || user.email?.split('@')[0]}</span>
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-jeewan-warn hover:bg-jeewan-warn-light transition"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Logout
+                </button>
+              </div>
+            ) : (
+              <Link
+                href="/login"
+                className="hidden md:flex items-center gap-1.5 px-4 py-2 rounded-lg bg-jeewan-calm-light text-jeewan-calm hover:bg-jeewan-calm hover:text-white font-semibold text-sm transition-all"
+              >
+                <User className="w-4 h-4" />
+                Login
+              </Link>
+            )}
 
             {/* SOS Button - Always visible */}
             <Link
@@ -133,14 +166,25 @@ export default function Navbar() {
                   Report Drug Activity
                 </Link>
 
-                <Link
-                  href="/login"
-                  onClick={() => setIsOpen(false)}
-                  className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-jeewan-calm text-white font-bold text-base transition hover:bg-jeewan-calm/90 mt-2"
-                >
-                  <User className="w-5 h-5" />
-                  Login / Sign Up
-                </Link>
+                {/* Mobile Auth Button */}
+                {user ? (
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-xl bg-jeewan-warn/10 text-jeewan-warn font-bold text-base transition hover:bg-jeewan-warn/20 mt-2"
+                  >
+                    <LogOut className="w-5 h-5" />
+                    Logout ({user.displayName || user.email?.split('@')[0]})
+                  </button>
+                ) : (
+                  <Link
+                    href="/login"
+                    onClick={() => setIsOpen(false)}
+                    className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-jeewan-calm text-white font-bold text-base transition hover:bg-jeewan-calm/90 mt-2"
+                  >
+                    <User className="w-5 h-5" />
+                    Login / Sign Up
+                  </Link>
+                )}
               </div>
             </div>
           </div>
