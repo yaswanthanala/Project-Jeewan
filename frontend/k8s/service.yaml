@@ -1,0 +1,71 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: jeewan-frontend
+  labels:
+    app: jeewan
+    tier: frontend
+spec:
+  type: ClusterIP
+  selector:
+    app: jeewan
+    tier: frontend
+  ports:
+  - name: http
+    port: 80
+    targetPort: 3000
+    protocol: TCP
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: jeewan-frontend
+spec:
+  podSelector:
+    matchLabels:
+      app: jeewan
+      tier: frontend
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: ingress-nginx
+    ports:
+    - protocol: TCP
+      port: 3000
+  egress:
+  - to:
+    - namespaceSelector: {}
+    ports:
+    - protocol: TCP
+      port: 53   # DNS
+    - protocol: UDP
+      port: 53   # DNS
+  - to:
+    - podSelector:
+        matchLabels:
+          app: jeewan
+          tier: api
+    ports:
+    - protocol: TCP
+      port: 3000
+  - to:
+    - podSelector:
+        matchLabels:
+          app: jeewan
+          tier: socket
+    ports:
+    - protocol: TCP
+      port: 8003
+  - to:
+    - podSelector: {}
+    ports:
+    - protocol: TCP
+      port: 443   # HTTPS
