@@ -31,8 +31,8 @@ class TestSOSTrigger:
 
     def test_trigger_with_gps(self, client):
         r = client.post("/sos/trigger", json={
-            "latitude": 17.3850,
-            "longitude": 78.4867,
+            "lat": 17.3850,
+            "lng": 78.4867,
             "user_id": "test-user-1",
         })
         assert r.status_code == 200
@@ -52,8 +52,8 @@ class TestSOSTrigger:
         import time
         start = time.time()
         r = client.post("/sos/trigger", json={
-            "latitude": 17.3850,
-            "longitude": 78.4867,
+            "lat": 17.3850,
+            "lng": 78.4867,
             "user_id": "perf-test",
         })
         elapsed = time.time() - start
