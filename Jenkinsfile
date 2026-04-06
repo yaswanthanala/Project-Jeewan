@@ -44,7 +44,7 @@ pipeline {
                         for svc in auth sos chatbot gamification maps risk admin; do
                             cd backend/${svc}
                             sonar-scanner \
-                                -Dsonar.projectKey=jeewan-${svc}-ms \
+                                -Dsonar.projectKey=jeewan-platform \
                                 -Dsonar.sources=. \
                                 -Dsonar.python.version=3 \
                                 -Dsonar.host.url=http://localhost:9005 \
