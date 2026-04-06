@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Play, Heart, Share2 } from 'lucide-react';
+import { useLanguage } from '@/lib/i18n';
 
 interface Story {
   id: string;
@@ -14,18 +15,22 @@ interface Story {
   color: string;
 }
 
-const STORIES: Story[] = [
-  { id: '1', title: "Ravi's 3-year journey", description: 'From darkness to light — how family support changed everything.', duration: '4:32', category: 'Recovery', views: 2100, likes: 456, color: '#d4e8d4' },
-  { id: '2', title: "Priya's story — college", description: 'How she resisted peer pressure and became an advocate.', duration: '3:10', category: 'Prevention', views: 1400, likes: 312, color: '#d4e0f0' },
-  { id: '3', title: "A mother's perspective", description: 'Watching her son recover taught her about unconditional love.', duration: '6:45', category: 'Family', views: 3800, likes: 891, color: '#f0e4d4' },
-  { id: '4', title: "Arjun's comeback story", description: 'Youth recovery program helped him rebuild his life.', duration: '5:20', category: 'Recovery', views: 4521, likes: 923, color: '#d4e8d4' },
-  { id: '5', title: "Finding purpose after addiction", description: "Aisha's journey from rehab to social work.", duration: '4:05', category: 'Recovery', views: 2876, likes: 534, color: '#e0d4f0' },
-  { id: '6', title: "Breaking the cycle", description: 'The Sharma family overcame generational addiction patterns.', duration: '7:30', category: 'Family', views: 5234, likes: 1102, color: '#f0e4d4' },
-];
+// Demo data saved if needed later
+// const DEMO_STORIES: Story[] = [
+//   { id: '1', title: "Ravi's 3-year journey", description: 'From darkness to light — how family support changed everything.', duration: '4:32', category: 'Recovery', views: 2100, likes: 456, color: '#d4e8d4' },
+//   { id: '2', title: "Priya's story — college", description: 'How she resisted peer pressure and became an advocate.', duration: '3:10', category: 'Prevention', views: 1400, likes: 312, color: '#d4e0f0' },
+//   { id: '3', title: "A mother's perspective", description: 'Watching her son recover taught her about unconditional love.', duration: '6:45', category: 'Family', views: 3800, likes: 891, color: '#f0e4d4' },
+//   { id: '4', title: "Arjun's comeback story", description: 'Youth recovery program helped him rebuild his life.', duration: '5:20', category: 'Recovery', views: 4521, likes: 923, color: '#d4e8d4' },
+//   { id: '5', title: "Finding purpose after addiction", description: "Aisha's journey from rehab to social work.", duration: '4:05', category: 'Recovery', views: 2876, likes: 534, color: '#e0d4f0' },
+//   { id: '6', title: "Breaking the cycle", description: 'The Sharma family overcame generational addiction patterns.', duration: '7:30', category: 'Family', views: 5234, likes: 1102, color: '#f0e4d4' },
+// ];
+
+const STORIES: Story[] = [];
 
 const CATEGORIES = ['All', 'Recovery', 'Prevention', 'Family'] as const;
 
 export default function StoriesPage() {
+  const { t } = useLanguage();
   const [liked, setLiked] = useState<Set<string>>(new Set());
   const [activeCategory, setActiveCategory] = useState<string>('All');
 
@@ -43,8 +48,8 @@ export default function StoriesPage() {
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-foreground">📣 Survivor Stories</h1>
-            <p className="text-sm text-jeewan-muted mt-1">Real stories from real people. Recovery is possible.</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground">📣 {t('pg.stories.title' as any)}</h1>
+            <p className="text-sm text-jeewan-muted mt-1">{t('pg.stories.sub' as any)}</p>
           </div>
           <button className="hidden md:flex items-center gap-1.5 px-4 py-2 rounded-xl border border-jeewan-nature text-jeewan-nature text-sm font-medium hover:bg-jeewan-nature hover:text-white transition">
             + Share Your Story
@@ -70,8 +75,13 @@ export default function StoriesPage() {
 
         {/* Stories Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredStories.map((story) => (
-            <div key={story.id} className="bg-card border border-border rounded-2xl overflow-hidden hover:shadow-md transition-shadow group">
+          {filteredStories.length === 0 ? (
+            <div className="col-span-full text-center py-12 bg-card border border-border rounded-2xl text-sm text-jeewan-muted">
+              No stories published yet. Be the first to share your journey!
+            </div>
+          ) : (
+            filteredStories.map((story) => (
+              <div key={story.id} className="bg-card border border-border rounded-2xl overflow-hidden hover:shadow-md transition-shadow group">
               {/* Thumbnail */}
               <div className="relative h-40" style={{ background: story.color }}>
                 <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
@@ -110,7 +120,8 @@ export default function StoriesPage() {
                 </div>
               </div>
             </div>
-          ))}
+            ))
+          )}
         </div>
 
         {/* Share CTA */}

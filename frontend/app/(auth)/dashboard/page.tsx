@@ -17,9 +17,9 @@ export default function DashboardPage() {
   });
 
   const [badges, setBadges] = useState([
-    { icon: '🏅', title: 'Awareness', description: 'Completed first quiz', isEarned: true, earnedDate: '2024-01-15' },
-    { icon: '🔥', title: '14-day', description: 'Daily pledge for 14 days', isEarned: true, earnedDate: '2024-01-28' },
-    { icon: '💬', title: 'Chat Champ', description: 'Had 5 counselling chats', isEarned: true, earnedDate: '2024-02-01' },
+    { icon: '🏅', title: 'Awareness', description: 'Completed first quiz', isEarned: false, earnedDate: '2024-01-15' },
+    { icon: '🔥', title: '14-day', description: 'Daily pledge for 14 days', isEarned: false, earnedDate: '2024-01-28' },
+    { icon: '💬', title: 'Chat Champ', description: 'Had 5 counselling chats', isEarned: false, earnedDate: '2024-02-01' },
     { icon: '🏆', title: '30-day', description: 'Drug-Free Ambassador', isEarned: false },
     { icon: '📚', title: 'Story Reader', description: 'Read 5+ stories', isEarned: false },
     { icon: '🌟', title: 'Recovery Star', description: 'Help 3 others', isEarned: false },

@@ -4,7 +4,7 @@ pipeline {
     environment {
         DOCKER_REGISTRY = 'docker.io/jeewan'
         SONARQUBE_URL   = 'http://sonarqube:9000'
-        SONAR_TOKEN     = credentials('sonarqube-token')
+        SONAR_TOKEN     = 'sqp_410d8249fe38cee4e65f32cf72eb91220cf0d862'
     }
 
     stages {

@@ -2,8 +2,10 @@
 
 import RehabMap from '@/components/RehabMap';
 import { MapPin, Phone, Info } from 'lucide-react';
+import { useLanguage } from '@/lib/i18n';
 
 export default function MapsPage() {
+  const { t } = useLanguage();
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-5xl mx-auto px-4 py-8">
@@ -12,9 +14,9 @@ export default function MapsPage() {
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-foreground flex items-center gap-2">
               <MapPin className="h-7 w-7 text-jeewan-calm" />
-              Find Rehab Centres Near You
+              {t('pg.maps.title' as any)}
             </h1>
-            <p className="text-sm text-jeewan-muted mt-1">Locate accredited centres. Filter by type and distance.</p>
+            <p className="text-sm text-jeewan-muted mt-1">{t('pg.maps.sub' as any)}</p>
           </div>
           <span className="hidden md:flex items-center gap-1.5 text-xs text-jeewan-nature bg-jeewan-nature-light px-3 py-1.5 rounded-full font-medium">
             <span className="w-2 h-2 rounded-full bg-jeewan-nature" />

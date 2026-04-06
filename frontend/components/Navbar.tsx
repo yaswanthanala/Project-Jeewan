@@ -5,19 +5,22 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Menu, X, Home, ClipboardList, MessageCircle, MapPin, BookHeart, Shield, AlertTriangle, Globe, User, LayoutDashboard, Trophy, CalendarCheck, Camera, Building2, Heart, Stethoscope, LogOut } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
+import { useLanguage } from '@/lib/i18n';
 
-const navLinks = [
-  { href: '/', label: 'Home', icon: Home },
-  { href: '/quiz', label: 'Quiz', icon: ClipboardList },
-  { href: '/chat', label: 'Chat', icon: MessageCircle },
-  { href: '/stories', label: 'Stories', icon: BookHeart },
-  { href: '/maps', label: 'Map', icon: MapPin },
+type NavLinks = { href: string; labelKey: any; icon: any }[];
+const navLinks: NavLinks = [
+  { href: '/', labelKey: 'nav.home', icon: Home },
+  { href: '/quiz', labelKey: 'nav.quiz', icon: ClipboardList },
+  { href: '/chat', labelKey: 'nav.chat', icon: MessageCircle },
+  { href: '/stories', labelKey: 'nav.stories', icon: BookHeart },
+  { href: '/maps', labelKey: 'nav.map', icon: MapPin },
 ];
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const { user, logout, loading } = useAuth();
   const router = useRouter();
+  const { locale, setLocale, t } = useLanguage();
 
   const handleLogout = async () => {
     await logout();
@@ -48,18 +51,26 @@ export default function Navbar() {
                 href={link.href}
                 className="px-4 py-2 rounded-lg text-sm font-medium text-jeewan-ink2 dark:text-jeewan-muted hover:bg-jeewan-calm-light dark:hover:bg-jeewan-calm-light hover:text-jeewan-calm transition-all"
               >
-                {link.label}
+                {t(link.labelKey)}
               </Link>
             ))}
           </div>
 
           {/* Right Actions */}
           <div className="flex items-center gap-2 flex-shrink-0">
-            {/* Language Toggle */}
-            <button className="hidden md:flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-jeewan-muted hover:bg-jeewan-surface dark:hover:bg-muted border border-border transition-all">
+            {/* Language Toggle (Hidden for now as requested) */}
+            {/*
+            <button 
+              onClick={() => {
+                const next = locale === 'en' ? 'hi' : locale === 'hi' ? 'te' : 'en';
+                setLocale(next);
+              }}
+              className="hidden md:flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-jeewan-muted hover:bg-jeewan-surface dark:hover:bg-muted border border-border transition-all"
+            >
               <Globe className="w-3.5 h-3.5" />
-              <span>EN</span>
+              <span>{locale.toUpperCase()}</span>
             </button>
+            */}
 
             {/* Auth Buttons — Desktop */}
             {user ? (
@@ -80,7 +91,7 @@ export default function Navbar() {
                   className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-jeewan-warn hover:bg-jeewan-warn-light transition"
                 >
                   <LogOut className="w-4 h-4" />
-                  Logout
+                  {t('nav.logout')}
                 </button>
               </div>
             ) : (
@@ -89,7 +100,7 @@ export default function Navbar() {
                 className="hidden md:flex items-center gap-1.5 px-4 py-2 rounded-lg bg-jeewan-calm-light text-jeewan-calm hover:bg-jeewan-calm hover:text-white font-semibold text-sm transition-all"
               >
                 <User className="w-4 h-4" />
-                Login
+                {t('nav.login')}
               </Link>
             )}
 
@@ -98,10 +109,9 @@ export default function Navbar() {
               href="/#sos"
               className="flex items-center gap-1.5 px-3 py-2 md:px-4 rounded-lg bg-jeewan-warn text-white font-medium text-sm hover:bg-jeewan-warn/90 transition-all"
             >
-              <span className="relative flex h-2 w-2">
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
-              </span>
-              SOS
+              <AlertTriangle className="w-4 h-4" />
+              <span className="hidden sm:inline">{t('nav.sos')}</span>
+              <span className="sm:hidden">SOS</span>
             </Link>
 
             {/* Mobile Menu */}
@@ -130,7 +140,7 @@ export default function Navbar() {
                     className="flex items-center gap-3 px-4 py-3 rounded-xl text-foreground hover:bg-jeewan-calm-light dark:hover:bg-jeewan-calm-light hover:text-jeewan-calm transition font-medium text-base"
                   >
                     <Icon className="w-5 h-5 text-jeewan-muted" />
-                    {link.label}
+                    {t(link.labelKey)}
                   </Link>
                 );
               })}

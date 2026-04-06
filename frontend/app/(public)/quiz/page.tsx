@@ -4,8 +4,9 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import QuizStep from '@/components/QuizStep';
 import GetHelpModal from '@/components/GetHelpModal';
-import { Shield, ArrowLeft } from 'lucide-react';
+import { Shield, ArrowLeft, ShieldAlert } from 'lucide-react';
 import { riskAPI, getUser } from '@/lib/api';
+import { useLanguage } from '@/lib/i18n';
 
 const DAST_10_QUESTIONS = [
   { id: 1, question: 'Have you used drugs other than those required for medical reasons?', answers: [{ value: 0, label: 'Never', description: 'No recreational use' }, { value: 1, label: 'Once or twice', description: 'Rare occurrence' }, { value: 2, label: 'Monthly', description: 'Occasional use' }, { value: 3, label: 'Weekly or more', description: 'Frequent use' }] },
@@ -21,6 +22,7 @@ const DAST_10_QUESTIONS = [
 ];
 
 export default function QuizPage() {
+  const { t } = useLanguage();
   const [quizState, setQuizState] = useState({ currentQuestion: 0, answers: [] as number[], isComplete: false });
   const [showGetHelpModal, setShowGetHelpModal] = useState(false);
   const [serverResult, setServerResult] = useState<{ risk_level: string; recommendation: string; score: number } | null>(null);

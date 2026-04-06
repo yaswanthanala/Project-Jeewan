@@ -4,13 +4,8 @@ import { useState, useEffect } from 'react';
 import { adminAPI } from '@/lib/api';
 
 export default function AdminPage() {
-  const [flaggedCases, setFlaggedCases] = useState([
-    { id: 2847, detail: 'Quiz score: 9/10 · College: NIT AP', status: 'pending' },
-    { id: 2846, detail: 'SOS triggered · Visakhapatnam', status: 'resolved' },
-    { id: 2845, detail: 'Quiz score: 8/10 · College: JNTU', status: 'pending' },
-  ]);
-
-  const [stats, setStats] = useState({ flagged: 7, active: '1,240', quizzes: 156, sos: 42 });
+  const [flaggedCases, setFlaggedCases] = useState<any[]>([]);
+  const [stats, setStats] = useState({ flagged: 0, active: '0', quizzes: 0, sos: 0 });
 
   useEffect(() => {
     async function fetchAdmin() {
@@ -21,10 +16,10 @@ export default function AdminPage() {
         ]);
         if (statsData) {
           setStats({
-            flagged: statsData.high_risk_flagged || 7,
-            active: (statsData.active_today || 342).toLocaleString(),
-            quizzes: statsData.quizzes_completed || 156,
-            sos: statsData.sos_triggers_today || 3,
+            flagged: statsData.high_risk_flagged || 0,
+            active: (statsData.active_today || 0).toLocaleString(),
+            quizzes: statsData.quizzes_completed || 0,
+            sos: statsData.sos_triggers_today || 0,
           });
         }
         if (casesData?.cases?.length) {
@@ -86,8 +81,13 @@ export default function AdminPage() {
         <div className="bg-card border border-border rounded-xl p-5">
           <p className="text-[10px] font-bold text-jeewan-muted uppercase tracking-wider mb-3">High-risk flagged cases (anonymous)</p>
           <div className="space-y-2.5">
-            {flaggedCases.map((c) => (
-              <div key={c.id} className="flex items-center justify-between p-3 bg-jeewan-surface dark:bg-muted rounded-xl">
+            {flaggedCases.length === 0 ? (
+              <div className="text-center py-6 text-jeewan-muted text-sm">
+                No flagged cases yet. Waiting for live data...
+              </div>
+            ) : (
+              flaggedCases.map((c) => (
+                <div key={c.id} className="flex items-center justify-between p-3 bg-jeewan-surface dark:bg-muted rounded-xl">
                 <div>
                   <span className="text-xs font-bold text-foreground">Case #{c.id}</span>
                   <span className="text-xs text-jeewan-muted ml-2">{c.detail}</span>
@@ -102,7 +102,7 @@ export default function AdminPage() {
                   </span>
                 )}
               </div>
-            ))}
+            )))}
           </div>
         </div>
       </div>

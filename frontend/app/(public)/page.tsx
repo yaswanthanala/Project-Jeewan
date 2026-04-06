@@ -3,15 +3,17 @@
 import Link from 'next/link';
 import { MessageCircle, MapPin, BookHeart, ClipboardList, Users, Shield, Phone, ArrowRight } from 'lucide-react';
 import SOSButton from '@/components/SOSButton';
+import { useLanguage } from '@/lib/i18n';
 
 export default function HomePage() {
+  const { t } = useLanguage();
   const features = [
     {
       href: '/quiz',
       icon: ClipboardList,
       emoji: '📋',
-      title: 'Check Your Risk',
-      description: 'DAST-10 quiz · 2 min · Anonymous',
+      title: t('feat.quiz.title' as any),
+      description: t('feat.quiz.desc' as any),
       color: 'bg-jeewan-calm-light text-jeewan-calm border-jeewan-calm/20',
       hoverColor: 'hover:border-jeewan-calm',
     },
@@ -19,8 +21,8 @@ export default function HomePage() {
       href: '/chat',
       icon: MessageCircle,
       emoji: '💬',
-      title: 'Talk to AI',
-      description: 'No login · 24/7 chat · Private',
+      title: t('feat.chat.title' as any),
+      description: t('feat.chat.desc' as any),
       color: 'bg-jeewan-nature-light text-jeewan-nature border-jeewan-nature/20',
       hoverColor: 'hover:border-jeewan-nature',
     },
@@ -28,8 +30,8 @@ export default function HomePage() {
       href: '/maps',
       icon: MapPin,
       emoji: '🗺',
-      title: 'Find Rehab',
-      description: 'Nearest centres · GPS · Directions',
+      title: t('feat.maps.title' as any),
+      description: t('feat.maps.desc' as any),
       color: 'bg-jeewan-calm-light text-jeewan-calm border-jeewan-calm/20',
       hoverColor: 'hover:border-jeewan-calm',
     },
@@ -37,8 +39,8 @@ export default function HomePage() {
       href: '/stories',
       icon: BookHeart,
       emoji: '📣',
-      title: 'Hear Stories',
-      description: 'Real recovery voices · Inspiring',
+      title: t('feat.stories.title' as any),
+      description: t('feat.stories.desc' as any),
       color: 'bg-jeewan-nature-light text-jeewan-nature border-jeewan-nature/20',
       hoverColor: 'hover:border-jeewan-nature',
     },
@@ -46,8 +48,8 @@ export default function HomePage() {
       href: '/ar',
       icon: BookHeart,
       emoji: '🪞',
-      title: 'AR Simulation',
-      description: 'See drug effects on your face',
+      title: t('feat.ar.title' as any),
+      description: t('feat.ar.desc' as any),
       color: 'bg-jeewan-warn-light text-jeewan-warn border-jeewan-warn/20',
       hoverColor: 'hover:border-jeewan-warn',
     },
@@ -55,17 +57,17 @@ export default function HomePage() {
       href: '/tipoff',
       icon: BookHeart,
       emoji: '📍',
-      title: 'Report Activity',
-      description: 'Anonymous · No IP stored',
+      title: t('feat.tipoff.title' as any),
+      description: t('feat.tipoff.desc' as any),
       color: 'bg-jeewan-calm-light text-jeewan-calm border-jeewan-calm/20',
       hoverColor: 'hover:border-jeewan-calm',
     },
   ];
 
   const stats = [
-    { number: '1.2L+', label: 'Youth Helped', color: 'text-jeewan-calm' },
-    { number: '320+', label: 'Rehab Centres', color: 'text-jeewan-nature' },
-    { number: '24/7', label: 'Crisis Line', color: 'text-jeewan-warn' },
+    { number: t('stat.1.val' as any), label: t('stat.1.lbl' as any), color: 'text-jeewan-calm' },
+    { number: t('stat.2.val' as any), label: t('stat.2.lbl' as any), color: 'text-jeewan-nature' },
+    { number: t('stat.3.val' as any), label: t('stat.3.lbl' as any), color: 'text-jeewan-warn' },
   ];
 
   return (
@@ -80,10 +82,10 @@ export default function HomePage() {
 
           {/* Tagline */}
           <h1 className="text-4xl md:text-5xl lg:text-5xl font-bold text-foreground mb-4 leading-tight tracking-tight">
-            You don&apos;t have to<br />face this <span className="text-jeewan-calm">alone</span>.
+            {t('hero.title1')}<br />{t('hero.title2')} <span className="text-jeewan-calm">{t('hero.title3')}</span>
           </h1>
           <p className="text-base md:text-lg text-jeewan-muted mb-8 font-medium">
-            Anonymous help · No judgment · Any time
+            {t('hero.subtitle')}
           </p>
 
           {/* Emergency Helpline */}
@@ -132,15 +134,15 @@ export default function HomePage() {
       <section className="jeewan-section bg-jeewan-surface dark:bg-muted">
         <div className="max-w-4xl mx-auto">
           <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-8 text-center" style={{ fontFamily: "'Fraunces', serif" }}>
-            Why People <span className="text-jeewan-calm">Trust</span> JEEWAN
+            {t('trust.title1' as any)} <span className="text-jeewan-calm">{t('trust.title2' as any)}</span> {t('trust.title3' as any)}
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {[
-              { icon: '🔒', title: '100% Confidential', desc: 'Encrypted conversations. No data shared. Ever.' },
-              { icon: '💸', title: 'Completely Free', desc: 'No hidden charges. All services at zero cost.' },
-              { icon: '🤝', title: 'No Judgment', desc: 'We listen, support, and guide — without stigma.' },
-              { icon: '🏥', title: 'Professional Help', desc: 'Certified counsellors and accredited rehab centres.' },
+              { icon: '🔒', title: t('trust.f1.t' as any), desc: t('trust.f1.d' as any) },
+              { icon: '💸', title: t('trust.f2.t' as any), desc: t('trust.f2.d' as any) },
+              { icon: '🤝', title: t('trust.f3.t' as any), desc: t('trust.f3.d' as any) },
+              { icon: '🏥', title: t('trust.f4.t' as any), desc: t('trust.f4.d' as any) },
             ].map((item, i) => (
               <div key={i} className="flex gap-4 p-5 bg-card rounded-2xl border border-border hover:shadow-sm transition-shadow">
                 <span className="text-2xl">{item.icon}</span>
@@ -158,18 +160,18 @@ export default function HomePage() {
       <section className="bg-card border-y border-border py-12 md:py-16 px-4">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-3">
-            Ready to Take the First Step?
+            {t('cta.title' as any)}
           </h2>
           <p className="text-jeewan-muted mb-8 text-sm md:text-base max-w-xl mx-auto">
-            Thousands have found help and recovered. You can too. Start whenever you&apos;re ready — we&apos;re available 24/7.
+            {t('cta.desc' as any)}
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link href="/login" className="px-6 py-3 rounded-xl bg-jeewan-calm text-white hover:bg-jeewan-calm/90 font-bold text-sm transition flex items-center justify-center gap-2">
-              Create an Account
+              {t('cta.btn1' as any)}
               <ArrowRight className="w-4 h-4" />
             </Link>
             <Link href="/quiz" className="px-6 py-3 rounded-xl bg-card text-foreground hover:bg-muted font-bold text-sm transition border border-border flex items-center justify-center gap-2">
-              Take Self Assessment
+              {t('cta.btn2' as any)}
             </Link>
           </div>
         </div>
@@ -178,10 +180,10 @@ export default function HomePage() {
       {/* ── Tip-Off Link ── */}
       <div className="text-center py-6 text-sm text-jeewan-muted">
         <Link href="/tipoff" className="hover:text-jeewan-calm transition inline-flex items-center gap-1.5">
-          📍 Report Drug Activity (anonymous)
+          {t('footer.report' as any)}
         </Link>
         <span className="mx-2">·</span>
-        <a href="#about" className="hover:text-jeewan-calm transition">About JEEWAN</a>
+        <a href="#about" className="hover:text-jeewan-calm transition">{t('footer.about' as any)}</a>
       </div>
     </div>
   );

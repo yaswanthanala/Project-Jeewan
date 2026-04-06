@@ -1,85 +1,78 @@
-const CACHE_NAME = 'jeewan-v1';
-const STATIC_ASSETS = [
+const CACHE_NAME = 'jeewan-offline-v1';
+
+// Add core routes and assets here to guarantee offline support
+const OFFLINE_URLS = [
   '/',
-  '/icon-192.png',
-  '/icon-512.png',
-  '/manifest.json',
+  '/quiz',
+  '/chat',
+  '/stories',
+  '/manifest.json'
 ];
 
-// Install event - cache static assets
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_ASSETS).catch((err) => {
-        console.log('Cache addAll error:', err);
-      });
+      // Don't strongly block on all failing
+      return cache.addAll(OFFLINE_URLS.map(url => new Request(url, { cache: 'reload' })))
+        .catch(err => console.log('Offline cache pre-load partial success:', err));
     })
   );
+  // Force the waiting service worker to become the active service worker.
   self.skipWaiting();
 });
 
-// Activate event - clean up old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
-        cacheNames
-          .filter((cacheName) => cacheName !== CACHE_NAME)
-          .map((cacheName) => caches.delete(cacheName))
+        cacheNames.map((cacheName) => {
+          if (cacheName !== CACHE_NAME) {
+            return caches.delete(cacheName);
+          }
+        })
       );
     })
   );
+  // Tell the active service worker to take control of the page immediately.
   self.clients.claim();
 });
 
-// Fetch event - serve from cache, fallback to network
 self.addEventListener('fetch', (event) => {
-  const { request } = event;
-  const url = new URL(request.url);
+  // Only cache GET requests
+  if (event.request.method !== 'GET') return;
+  // Ignore external cross-origin requests
+  if (!event.request.url.startsWith(self.location.origin)) return;
 
-  // Skip cross-origin requests
-  if (url.origin !== location.origin) {
-    return;
-  }
-
-  // Skip API requests - always go to network
-  if (url.pathname.startsWith('/api/')) {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          // Cache successful API responses
-          if (response.ok) {
-            const cache = caches.open('jeewan-api-cache');
-            cache.then((c) => c.put(request, response.clone()));
-          }
-          return response;
-        })
-        .catch(() => {
-          // Return cached response if network fails
-          return caches.match(request);
-        })
-    );
-    return;
-  }
-
-  // Cache-first for assets and pages
   event.respondWith(
-    caches.match(request).then((cached) => {
-      return cached || fetch(request).then((response) => {
-        // Cache successful responses
-        if (response.ok && request.method === 'GET') {
-          const cache = caches.open(CACHE_NAME);
-          cache.then((c) => c.put(request, response.clone()));
+    caches.match(event.request).then((cachedResponse) => {
+      if (cachedResponse) {
+        // Return cached version, but update in background
+        event.waitUntil(
+          fetch(event.request).then((networkResponse) => {
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, networkResponse);
+            });
+          }).catch(() => {})
+        );
+        return cachedResponse;
+      }
+
+      // If not cached, attempt network
+      return fetch(event.request).then((networkResponse) => {
+        // Cache successful responses for next time
+        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
         }
-        return response;
+        return networkResponse;
+      }).catch(() => {
+        // If entirely offline and not in cache, fallback to offline page or index
+        if (event.request.mode === 'navigate') {
+          return caches.match('/');
+        }
       });
     })
   );
-});
-
-// Handle messages from clients
-self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
 });

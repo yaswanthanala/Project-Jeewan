@@ -1,303 +1,542 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { Download, AlertTriangle, ArrowLeft, MessageCircle, ClipboardList, Camera, Ban, Sparkles } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Download, AlertTriangle, ArrowLeft, Camera, Ban } from 'lucide-react';
 import Link from 'next/link';
 import Script from 'next/script';
+import { useLanguage } from '@/lib/i18n';
 
 const EFFECTS = [
-  { name: 'Methamphetamine', desc: 'Skin sores, severe tooth decay, meth mites picking marks' },
-  { name: 'Heroin / Opioids', desc: 'Severe dark circles under eyes, deathly paleness' },
-  { name: 'Alcohol Abuse', desc: 'Sores around nose/cheeks, broken capillaries (Rosacea)' },
-  { name: 'Cocaine / Crack', desc: 'Sunken gaunt cheeks, nasal septal destruction' }
+  {
+    name: 'Methamphetamine',
+    desc: 'Open skin sores, severe tooth decay, meth mites picking marks',
+    color: '#dc2626',
+  },
+  {
+    name: 'Heroin / Opioids',
+    desc: 'Severe dark circles under eyes, hollow cheeks, ashen skin',
+    color: '#7c3aed',
+  },
+  {
+    name: 'Alcohol Abuse',
+    desc: 'Rosacea flushing across nose & cheeks, broken capillaries',
+    color: '#ea580c',
+  },
+  {
+    name: 'Cocaine / Crack',
+    desc: 'Sunken gaunt cheeks, nasal septal necrosis, grey pallor',
+    color: '#475569',
+  },
 ];
 
 export default function ARPage() {
+  const { t } = useLanguage();
   const [isActive, setIsActive] = useState(false);
   const [activeEffect, setActiveEffect] = useState<string | null>(null);
-  const [scriptsLoaded, setScriptsLoaded] = useState({ camera: false, faceMesh: false, drawing: false });
+  const [status, setStatus] = useState<'idle' | 'loading' | 'running'>('idle');
+  const [scriptsLoaded, setScriptsLoaded] = useState({
+    camera: false,
+    faceMesh: false,
+    drawing: false,
+  });
 
+  const activeEffectRef = useRef<string | null>(null);
   const isLoaded = scriptsLoaded.camera && scriptsLoaded.faceMesh && scriptsLoaded.drawing;
-
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const faceMeshRef = useRef<any>(null);
   const cameraRef = useRef<any>(null);
+  const isCleaningUp = useRef(false);
 
-  useEffect(() => {
-    if (!isActive || !isLoaded || typeof window === 'undefined') return;
-    
-    // @ts-ignore
-    if (!window.FaceMesh || !window.Camera) return;
+  const handleSetEffect = (effect: string | null) => {
+    setActiveEffect(effect);
+    activeEffectRef.current = effect;
+  };
 
-    if (!faceMeshRef.current) {
-      // @ts-ignore
-      const faceMesh = new window.FaceMesh({
-        locateFile: (file: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
-      });
-
-      faceMesh.setOptions({
-        maxNumFaces: 1,
-        refineLandmarks: true,
-        minDetectionConfidence: 0.5,
-        minTrackingConfidence: 0.5
-      });
-
-      faceMesh.onResults(onResults);
-      faceMeshRef.current = faceMesh;
-    }
-
-    if (videoRef.current && !cameraRef.current) {
-      // @ts-ignore
-      const camera = new window.Camera(videoRef.current, {
-        onFrame: async () => {
-          if (videoRef.current && faceMeshRef.current) {
-            await faceMeshRef.current.send({ image: videoRef.current });
-          }
-        },
-        width: 1280,
-        height: 720
-      });
-      camera.start().catch((e: any) => console.error("Camera start failed: ", e));
-      cameraRef.current = camera;
-    }
-
-    return () => {
+  // Partially cleanup AR: MediaPipe WASM crashes if we destroy faceMesh entirely
+  // So we only stop the camera tracks and let FaceMesh sit idle.
+  const cleanupAR = useCallback(() => {
+    isCleaningUp.current = true;
+    try {
       if (cameraRef.current) {
         cameraRef.current.stop();
         cameraRef.current = null;
       }
+    } catch (_) {}
+    
+    // We explicitly DO NOT call faceMeshRef.current.close() to prevent the 
+    // 'Module.arguments has been replaced' WASM crash on restart.
+    
+    if (videoRef.current && videoRef.current.srcObject) {
+      const stream = videoRef.current.srcObject as MediaStream;
+      stream.getTracks().forEach((t) => t.stop());
+      videoRef.current.srcObject = null;
+    }
+    isCleaningUp.current = false;
+  }, []);
+
+  useEffect(() => {
+    if (!isActive || !isLoaded || typeof window === 'undefined') return;
+    if (isCleaningUp.current) return;
+
+    // @ts-ignore
+    if (!window.FaceMesh || !window.Camera) return;
+
+    setStatus('loading');
+
+    // Only instantiate FaceMesh once per page lifecycle to avoid WASM abort errors
+    if (!faceMeshRef.current) {
+      try {
+        // @ts-ignore
+        const faceMesh = new window.FaceMesh({
+          locateFile: (file: string) =>
+            `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4/${file}`,
+        });
+        faceMesh.setOptions({
+          maxNumFaces: 1,
+          refineLandmarks: true,
+          minDetectionConfidence: 0.5,
+          minTrackingConfidence: 0.5,
+        });
+        faceMesh.onResults(onResults);
+        faceMeshRef.current = faceMesh;
+      } catch (e) {
+        console.error('FaceMesh init failed:', e);
+        setStatus('idle');
+        return;
+      }
+    }
+
+    if (videoRef.current && !cameraRef.current) {
+      try {
+        // @ts-ignore
+        const camera = new window.Camera(videoRef.current, {
+          onFrame: async () => {
+            if (videoRef.current && faceMeshRef.current && !isCleaningUp.current) {
+              try {
+                await faceMeshRef.current.send({ image: videoRef.current });
+              } catch (_) {}
+            }
+          },
+          width: 1280,
+          height: 720,
+        });
+        camera
+          .start()
+          .then(() => setStatus('running'))
+          .catch((e: any) => {
+            console.error('Camera start failed:', e);
+            setStatus('idle');
+          });
+        cameraRef.current = camera;
+      } catch (e) {
+        console.error('Camera init failed:', e);
+        setStatus('idle');
+      }
+    }
+
+    return () => {
+      cleanupAR();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isActive, isLoaded]);
 
   const onResults = (results: any) => {
-    if (!canvasRef.current || !videoRef.current) return;
-    const canvasCtx = canvasRef.current.getContext('2d');
-    if (!canvasCtx) return;
+    if (!canvasRef.current || !videoRef.current || isCleaningUp.current) return;
+    const ctx = canvasRef.current.getContext('2d');
+    if (!ctx) return;
 
     const w = canvasRef.current.width;
     const h = canvasRef.current.height;
 
-    canvasCtx.save();
-    canvasCtx.clearRect(0, 0, w, h);
-    
-    // Flip horizontally for natural mirror behavior
-    canvasCtx.translate(w, 0);
-    canvasCtx.scale(-1, 1);
+    ctx.save();
+    ctx.clearRect(0, 0, w, h);
 
-    // Draw the raw webcam feed
-    canvasCtx.drawImage(results.image, 0, 0, w, h);
+    // Draw mirrored video feed only
+    ctx.save();
+    ctx.translate(w, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(results.image, 0, 0, w, h);
+    ctx.restore();
 
     if (results.multiFaceLandmarks) {
       for (const landmarks of results.multiFaceLandmarks) {
-        
-        // Draw the 3D FaceMesh Wireframe mapping
+        // Mirror landmarks so mesh lines up with flipped video
+        const mirrored = landmarks.map((lm: any) => ({ ...lm, x: 1 - lm.x }));
+
         // @ts-ignore
         if (window.drawConnectors && window.FACEMESH_TESSELATION) {
           // @ts-ignore
-          window.drawConnectors(canvasCtx, landmarks, window.FACEMESH_TESSELATION, {
-            color: 'rgba(0, 255, 150, 0.15)', // Sci-fi green mapping mesh
-            lineWidth: 1
+          window.drawConnectors(ctx, mirrored, window.FACEMESH_TESSELATION, {
+            color: 'rgba(0, 255, 150, 0.18)',
+            lineWidth: 1,
           });
         }
 
-        // Draw Drug-Specific Physical Effects if one is active
-        if (activeEffect) {
-          drawRealisticEffects(canvasCtx, landmarks, w, h);
+        if (activeEffectRef.current) {
+          drawEffects(ctx, landmarks, w, h);
         }
       }
     }
-    canvasCtx.restore();
+
+    ctx.restore();
+    if (status !== 'running') setStatus('running');
   };
 
-  const drawRealisticEffects = (ctx: CanvasRenderingContext2D, landmarks: any[], w: number, h: number) => {
-    const getPos = (index: number) => ({ x: landmarks[index].x * w, y: landmarks[index].y * h });
+  const drawEffects = (
+    ctx: CanvasRenderingContext2D,
+    landmarks: any[],
+    w: number,
+    h: number
+  ) => {
     if (!landmarks[0]) return;
 
-    const drawSore = (x: number, y: number, radius: number, color1: string, color2: string) => {
+    // Mirror X to match the flipped video
+    const pt = (index: number) => ({
+      x: (1 - landmarks[index].x) * w,
+      y: landmarks[index].y * h,
+    });
+
+    const effect = activeEffectRef.current;
+
+    ctx.save();
+    // Clip ALL effects to the physical face perimeter so they NEVER bleed outside the jaw/hairline
+    const facePerimeter = [
+      10,338,297,332,284,251,389,356,454,323,361,288,
+      397,365,379,378,400,377,152,148,176,149,150,136,
+      172,58,132,93,234,127,162,21,54,103,67,109
+    ];
+    ctx.beginPath();
+    facePerimeter.forEach((idx, i) => {
+      const p = pt(idx);
+      i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y);
+    });
+    ctx.closePath();
+    ctx.clip();
+
+    // Soft radial blotch for more natural skin blending
+    const sore = (
+      x: number,
+      y: number,
+      r: number,
+      innerColor: string,
+      outerColor: string,
+      op: GlobalCompositeOperation = 'source-over'
+    ) => {
+      ctx.save();
+      ctx.globalCompositeOperation = op;
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, innerColor);
+      g.addColorStop(0.5, innerColor.replace(/[\d.]+\)$/, '0.3)'));
+      g.addColorStop(1, outerColor);
+      ctx.fillStyle = g;
       ctx.beginPath();
-      const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
-      gradient.addColorStop(0, color1);
-      gradient.addColorStop(1, color2);
-      ctx.fillStyle = gradient;
-      ctx.arc(x, y, radius, 0, 2 * Math.PI);
+      ctx.arc(x, y, r, 0, Math.PI * 2);
       ctx.fill();
+      ctx.restore();
     };
 
-    if (activeEffect === 'Methamphetamine') {
-      const soreSpots = [205, 425, 116, 345, 9, 10, 151, 203, 423];
-      soreSpots.forEach(idx => {
-        const p = getPos(idx);
-        drawSore(p.x, p.y, 14, 'rgba(180, 20, 0, 0.95)', 'rgba(80, 0, 0, 0)');
+    // Filled region from landmark indices
+    const region = (
+      indices: number[],
+      color: string,
+      blur = 0,
+      op: GlobalCompositeOperation = 'source-over'
+    ) => {
+      ctx.save();
+      ctx.globalCompositeOperation = op;
+      if (blur > 0) ctx.filter = `blur(${blur}px)`;
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      indices.forEach((idx, i) => {
+        const p = pt(idx);
+        i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y);
       });
-      const mouthUpper = getPos(13);
-      const mouthLower = getPos(14);
-      drawSore((mouthUpper.x + mouthLower.x)/2, (mouthUpper.y + mouthLower.y)/2, 40, 'rgba(40, 10, 0, 0.95)', 'rgba(0,0,0,0)');
-    }
-
-    if (activeEffect === 'Heroin / Opioids') {
-      const leftEyeBag = [110, 111, 117, 118, 119, 120, 121, 145, 153];
-      const rightEyeBag = [339, 340, 346, 347, 348, 349, 350, 374, 380];
-      
-      ctx.fillStyle = 'rgba(50, 20, 70, 0.9)';
-      ctx.filter = 'blur(8px)';
-      ctx.beginPath();
-      leftEyeBag.forEach((idx, i) => i === 0 ? ctx.moveTo(getPos(idx).x, getPos(idx).y) : ctx.lineTo(getPos(idx).x, getPos(idx).y));
-      ctx.closePath();
-      ctx.fill();
-
-      ctx.beginPath();
-      rightEyeBag.forEach((idx, i) => i === 0 ? ctx.moveTo(getPos(idx).x, getPos(idx).y) : ctx.lineTo(getPos(idx).x, getPos(idx).y));
       ctx.closePath();
       ctx.fill();
       ctx.filter = 'none';
+      ctx.restore();
+    };
 
-      ctx.fillStyle = 'rgba(230, 240, 255, 0.35)'; // Visible deathly pallor
-      ctx.globalCompositeOperation = 'lighten';
-      ctx.beginPath();
-      const faceSilhouette = [10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109];
-      faceSilhouette.forEach((idx, i) => i === 0 ? ctx.moveTo(getPos(idx).x, getPos(idx).y) : ctx.lineTo(getPos(idx).x, getPos(idx).y));
-      ctx.closePath();
-      ctx.fill();
-      ctx.globalCompositeOperation = 'source-over';
+    // ─── METHAMPHETAMINE ────────────────────────────────────────────
+    if (effect === 'Methamphetamine') {
+      // Many small picking sores (meth mites) distributed across face
+      const sites: Array<[number, number, string, string]> = [
+        // Forehead
+        [109, 8, 'rgba(160, 20, 10, 0.8)', 'rgba(80, 0, 0, 0)'],
+        [338, 10, 'rgba(150, 15, 15, 0.7)', 'rgba(80, 0, 0, 0)'],
+        [9, 12, 'rgba(180, 25, 10, 0.85)', 'rgba(100, 0, 0, 0)'],
+        [67, 9, 'rgba(170, 20, 20, 0.75)', 'rgba(90, 0, 0, 0)'],
+        [297, 11, 'rgba(160, 15, 5, 0.8)', 'rgba(80, 0, 0, 0)'],
+        
+        // Cheeks
+        [205, 14, 'rgba(190, 15, 10, 0.85)', 'rgba(120, 0, 0, 0)'],
+        [425, 15, 'rgba(180, 10, 10, 0.85)', 'rgba(120, 0, 0, 0)'],
+        [116, 12, 'rgba(150, 20, 15, 0.75)', 'rgba(80, 0, 0, 0)'],
+        [345, 13, 'rgba(160, 15, 10, 0.8)', 'rgba(80, 0, 0, 0)'],
+        [203, 10, 'rgba(140, 10, 10, 0.7)', 'rgba(60, 0, 0, 0)'],
+        [423, 11, 'rgba(145, 12, 10, 0.75)', 'rgba(60, 0, 0, 0)'],
+        [50, 13, 'rgba(170, 20, 10, 0.8)', 'rgba(90, 0, 0, 0)'],
+        [280, 12, 'rgba(165, 15, 15, 0.75)', 'rgba(90, 0, 0, 0)'],
+        
+        // Chin / Lower jaw
+        [200, 10, 'rgba(180, 10, 5, 0.8)', 'rgba(100, 0, 0, 0)'],
+        [420, 9, 'rgba(170, 15, 10, 0.75)', 'rgba(100, 0, 0, 0)'],
+        [14, 15, 'rgba(160, 20, 15, 0.8)', 'rgba(90, 0, 0, 0)'],
+        [17, 12, 'rgba(150, 10, 10, 0.7)', 'rgba(80, 0, 0, 0)'],
+      ];
+      sites.forEach(([idx, r, c1, c2]) => {
+        const p = pt(idx);
+        sore(p.x, p.y, r, c1, c2, 'multiply');
+      });
+      // Rotting teeth area shadow
+      const mouth = pt(13);
+      sore(mouth.x, mouth.y + 10, 35, 'rgba(30, 10, 5, 0.6)', 'rgba(0,0,0,0)', 'multiply');
     }
 
-    if (activeEffect === 'Alcohol Abuse') {
-      const noseBridge = getPos(4);
-      const leftInnerCheek = getPos(205);
-      const rightInnerCheek = getPos(425);
+    // ─── HEROIN / OPIOIDS ───────────────────────────────────────────
+    if (effect === 'Heroin / Opioids') {
+      // Soft ashen pallor
+      region(
+        [10,338,297,332,284,251,389,356,454,323,361,288,
+         397,365,379,378,400,377,152,148,176,149,150,136,
+         172,58,132,93,234,127,162,21,54,103,67,109],
+        'rgba(180, 190, 210, 0.15)', 0, 'screen'
+      );
+      // Softer under-eye circles
+      region(
+        [110,111,117,118,119,120,121,145,153,154,155,133,173],
+        'rgba(30, 20, 50, 0.5)', 8, 'multiply'
+      );
+      region(
+        [339,340,346,347,348,349,350,374,380,381,382,362,398],
+        'rgba(30, 20, 50, 0.5)', 8, 'multiply'
+      );
+      // Pale Blue-grey lips
+      region(
+        [61,185,40,39,37,0,267,269,270,409,291,375,321,405,314,17,84,181,91,146],
+        'rgba(120, 110, 140, 0.45)', 2
+      );
+    }
+
+    // ─── ALCOHOL ABUSE ──────────────────────────────────────────────
+    if (effect === 'Alcohol Abuse') {
+      const nose  = pt(4);
+      const lCheek = pt(205);
+      const rCheek = pt(425);
+      // Softer flush
+      sore(nose.x,    nose.y,        80,  'rgba(220, 50, 40, 0.5)', 'rgba(200,20,10,0)', 'color-burn');
+      sore(lCheek.x,  lCheek.y + 10, 90, 'rgba(210, 40, 30, 0.45)', 'rgba(180,0,0,0)',   'color-burn');
+      sore(rCheek.x,  rCheek.y + 10, 90, 'rgba(210, 40, 30, 0.45)', 'rgba(180,0,0,0)',   'color-burn');
+      // Reddened borders of eyes instead of whole socket
+      region([33,7,163,144,145,153,154,155,133], 'rgba(200,40,30,0.25)', 4, 'color-burn');
+      region([362,382,381,380,374,373,390,249,263], 'rgba(200,40,30,0.25)', 4, 'color-burn');
+    }
+
+    // ─── COCAINE / CRACK ────────────────────────────────────────────
+    if (effect === 'Cocaine / Crack') {
+      // Much softer grey pallor
+      region(
+        [10,338,297,332,284,251,389,356,454,323,361,288,
+         397,365,379,378,400,377,152,148,176,149,150,136,
+         172,58,132,93,234,127,162,21,54,103,67,109],
+        'rgba(100, 100, 110, 0.15)', 0, 'multiply'
+      );
+      // Softened Gaunt Shadows (cheekbones) - much wider radius and lower opacity to avoid "black dots"
+      const lH = pt(205), rH = pt(425), lC = pt(147), rC = pt(376);
+      sore((lH.x+lC.x)/2, (lH.y+lC.y)/2+20, 80,
+        'rgba(15, 15, 20, 0.4)', 'rgba(0,0,0,0)', 'multiply');
+      sore((rH.x+rC.x)/2, (rH.y+rC.y)/2+20, 80,
+        'rgba(15, 15, 20, 0.4)', 'rgba(0,0,0,0)', 'multiply');
       
-      ctx.globalCompositeOperation = 'color-burn';
-      drawSore(noseBridge.x, noseBridge.y + 15, 60, 'rgba(255, 40, 40, 0.7)', 'rgba(255, 40, 40, 0)');
-      drawSore(leftInnerCheek.x, leftInnerCheek.y, 70, 'rgba(220, 20, 20, 0.65)', 'rgba(220, 20, 20, 0)');
-      drawSore(rightInnerCheek.x, rightInnerCheek.y, 70, 'rgba(220, 20, 20, 0.65)', 'rgba(220, 20, 20, 0)');
-      ctx.globalCompositeOperation = 'source-over';
-    }
-
-    if (activeEffect === 'Cocaine / Crack') {
-      const leftHollow = getPos(205);
-      const rightHollow = getPos(425);
-      const leftCheekbone = getPos(147);
-      const rightCheekbone = getPos(376);
-
-      ctx.globalCompositeOperation = 'multiply';
-      drawSore((leftHollow.x + leftCheekbone.x)/2, (leftHollow.y + leftCheekbone.y)/2 + 20, 60, 'rgba(10, 10, 15, 0.95)', 'rgba(0,0,0,0)');
-      drawSore((rightHollow.x + rightCheekbone.x)/2, (rightHollow.y + rightCheekbone.y)/2 + 20, 60, 'rgba(10, 10, 15, 0.95)', 'rgba(0,0,0,0)');
-      ctx.globalCompositeOperation = 'source-over';
+      // Softened Nasal Damage - previously was a harsh red dot
+      const noseTip = pt(1);
+      const noseBase = pt(2);
+      sore(noseTip.x, noseTip.y + 5, 25, 'rgba(160, 30, 20, 0.4)', 'rgba(0,0,0,0)', 'multiply');
+      sore(noseBase.x, noseBase.y,   18, 'rgba(90, 10, 10, 0.35)', 'rgba(0,0,0,0)', 'multiply');
       
-      const noseTip = getPos(1);
-      drawSore(noseTip.x, noseTip.y + 10, 25, 'rgba(200, 10, 10, 0.95)', 'rgba(0,0,0,0)');
+      // Softened under-eye darkening
+      region([110,111,117,118,119,120,121,145,153], 'rgba(30,20,35,0.4)', 6, 'multiply');
+      region([339,340,346,347,348,349,350,374,380], 'rgba(30,20,35,0.4)', 6, 'multiply');
     }
+
+    ctx.restore(); // Ends the face Perimeter clipping
+  };
+
+  const handleCapture = () => {
+    if (!canvasRef.current) return;
+    const link = document.createElement('a');
+    link.download = `jeewan-${activeEffect?.toLowerCase().replace(/[\s/]+/g, '-') ?? 'capture'}.png`;
+    link.href = canvasRef.current.toDataURL('image/png');
+    link.click();
+  };
+
+  const handleStop = () => {
+    cleanupAR();
+    setIsActive(false);
+    handleSetEffect(null);
+    setStatus('idle');
+  };
+
+  const handleStart = () => {
+    cleanupAR();
+    setStatus('loading');
+    setIsActive(true);
   };
 
   return (
     <>
-      <Script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" strategy="lazyOnload" onLoad={() => setScriptsLoaded(prev => ({ ...prev, camera: true }))} />
-      <Script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" strategy="lazyOnload" onLoad={() => setScriptsLoaded(prev => ({ ...prev, drawing: true }))} />
-      <Script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" strategy="lazyOnload" onLoad={() => setScriptsLoaded(prev => ({ ...prev, faceMesh: true }))} />
+      <Script
+        src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"
+        strategy="lazyOnload"
+        onLoad={() => setScriptsLoaded((p) => ({ ...p, camera: true }))}
+      />
+      <Script
+        src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"
+        strategy="lazyOnload"
+        onLoad={() => setScriptsLoaded((p) => ({ ...p, drawing: true }))}
+      />
+      <Script
+        src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4/face_mesh.js"
+        strategy="lazyOnload"
+        onLoad={() => setScriptsLoaded((p) => ({ ...p, faceMesh: true }))}
+      />
 
       <div className="min-h-screen bg-gradient-to-b from-background to-muted/30">
         <div className="max-w-4xl mx-auto px-4 py-8">
-          
+
+          {/* Header */}
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-jeewan-calm flex items-center justify-center text-white shadow-lg">
-                <Sparkles className="w-6 h-6" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-foreground">See What Drugs Do</h1>
-                <p className="text-sm text-jeewan-muted mt-1 font-medium">Real-time educational physical simulations using AI face tracking.</p>
-              </div>
+            <div>
+              <h1 className="text-2xl font-bold text-foreground">
+                {t('pg.ar.title' as any)}
+              </h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                {t('pg.ar.sub' as any)}
+              </p>
             </div>
-            <Link href="/" className="mt-4 md:mt-0 px-4 py-2 rounded-xl border border-border text-xs font-bold hover:bg-muted transition flex items-center gap-2">
+            <Link
+              href="/"
+              className="mt-4 md:mt-0 px-4 py-2 rounded-xl border border-border text-sm font-medium hover:bg-muted transition flex items-center gap-2 text-foreground"
+            >
               <ArrowLeft className="w-4 h-4" /> Back to Home
             </Link>
           </div>
 
-          <div className="bg-card border border-border rounded-3xl p-4 md:p-6 shadow-xl relative grid grid-cols-1 md:grid-cols-12 gap-6">
-            
-            {/* Camera Viewport */}
-            <div className={`col-span-1 border border-border/50 bg-[#0a0a14] rounded-2xl overflow-hidden relative flex items-center justify-center ${isActive ? 'md:col-span-8' : 'md:col-span-12'} transition-all duration-500`} style={{ minHeight: '480px' }}>
-              <video ref={videoRef} className="hidden" playsInline muted autoPlay />
-              <canvas ref={canvasRef} width="1280" height="720" className="w-full h-full object-cover" />
+          {/* Main card */}
+          <div className="bg-card border border-border rounded-3xl p-4 md:p-6 shadow-xl grid grid-cols-1 md:grid-cols-12 gap-6">
 
+            {/* Camera viewport */}
+            <div
+              className={`col-span-1 border border-border/50 bg-[#0a0a14] rounded-2xl overflow-hidden relative flex items-center justify-center transition-all duration-500 ${
+                isActive ? 'md:col-span-8' : 'md:col-span-12'
+              }`}
+              style={{ minHeight: '480px' }}
+            >
+              <video ref={videoRef} className="hidden" playsInline muted autoPlay />
+              <canvas
+                ref={canvasRef}
+                width="1280"
+                height="720"
+                className="w-full h-full object-cover"
+              />
+
+              {/* Start screen */}
               {!isActive && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center h-full gap-4 bg-[#0a0a14]/90 backdrop-blur-sm z-10 p-8 text-center">
-                  <div className="p-4 bg-jeewan-calm/10 rounded-full mb-2">
-                    <Camera className="w-12 h-12 text-jeewan-calm" />
-                  </div>
-                  <h2 className="text-white text-lg font-bold">Face Simulation Camera</h2>
-                  <p className="text-sm text-white/60 max-w-sm">
-                    Allow camera access to map physical distortions directly onto your face in real-time.
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-[#0a0a14]/95 z-10 p-8 text-center">
+                  <Camera className="w-14 h-14 text-blue-400 mb-2" />
+                  <h2 className="text-white text-xl font-bold">
+                    Educational Face Simulation
+                  </h2>
+                  <p className="text-sm text-white/60 max-w-sm leading-relaxed">
+                    Your camera feed never leaves your device. The AI runs entirely
+                    in your browser — private and instant.
                   </p>
                   <button
-                    onClick={() => setIsActive(true)}
+                    onClick={handleStart}
                     disabled={!isLoaded}
-                    className="mt-4 px-8 py-4 bg-jeewan-calm hover:bg-blue-600 rounded-xl text-white font-bold transition shadow-lg shadow-jeewan-calm/20 disabled:opacity-50 disabled:shadow-none"
+                    className="mt-2 px-8 py-3.5 bg-blue-600 hover:bg-blue-700 rounded-xl text-white font-semibold transition disabled:opacity-40"
                   >
-                    {isLoaded ? 'Enable Camera Simulation' : 'Loading ML Engines...'}
+                    {isLoaded ? 'Start Simulation' : 'Loading AI Models…'}
                   </button>
                 </div>
               )}
-              
-              {isActive && !activeEffect && (
-                <div className="absolute top-6 left-1/2 -translate-x-1/2 bg-black/70 rounded-full px-6 py-2 border border-white/10 text-white shadow-xl text-sm font-medium backdrop-blur-md z-20 whitespace-nowrap animate-bounce">
-                  Select a substance to compute degradation 👇
+
+              {/* Warming up overlay */}
+              {isActive && status === 'loading' && (
+                <div className="absolute inset-0 flex items-center justify-center bg-[#0a0a14]/80 z-10">
+                  <p className="text-white text-sm font-medium animate-pulse">
+                    Initialising face tracking…
+                  </p>
+                </div>
+              )}
+
+              {/* Prompt once running */}
+              {isActive && status === 'running' && !activeEffect && (
+                <div className="absolute top-5 left-1/2 -translate-x-1/2 bg-black/70 rounded-full px-5 py-2 border border-white/10 text-white text-sm font-medium backdrop-blur-md z-20 whitespace-nowrap">
+                  Select a substance from the panel →
                 </div>
               )}
             </div>
 
-            {/* Sidebar Controls */}
+            {/* Sidebar */}
             {isActive && (
-              <div className="col-span-1 md:col-span-4 flex flex-col space-y-4 animate-in fade-in slide-in-from-right-4">
-                <div className="bg-surface border border-border rounded-2xl p-5">
-                  <p className="text-[10px] font-bold text-jeewan-muted uppercase tracking-wider mb-4">Simulate Substances</p>
-                  <div className="flex flex-col gap-3">
-                    {EFFECTS.map((effect) => (
-                      <button
-                        key={effect.name}
-                        onClick={() => setActiveEffect(activeEffect === effect.name ? null : effect.name)}
-                        className={`px-4 py-3.5 rounded-xl text-sm font-bold transition flex flex-col text-left border ${
-                          activeEffect === effect.name
-                            ? 'bg-jeewan-warn border-jeewan-warn text-white shadow-lg'
-                            : 'bg-card border-border hover:border-jeewan-warn/50 hover:bg-jeewan-warn-light/30 text-foreground'
-                        }`}
-                      >
-                        {effect.name}
-                        <span className={`text-[10px] font-medium mt-1 leading-relaxed ${activeEffect === effect.name ? 'text-white/80' : 'text-jeewan-muted'}`}>
-                          {effect.desc}
-                        </span>
-                      </button>
-                    ))}
+              <div className="col-span-1 md:col-span-4 flex flex-col gap-4">
+
+                <div className="bg-muted/40 border border-border rounded-2xl p-4">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">
+                    Simulate Substance
+                  </p>
+                  <div className="flex flex-col gap-2.5">
+                    {EFFECTS.map((effect) => {
+                      const active = activeEffect === effect.name;
+                      return (
+                        <button
+                          key={effect.name}
+                          onClick={() => handleSetEffect(active ? null : effect.name)}
+                          className={`px-4 py-3 rounded-xl text-sm font-semibold text-left border transition-all ${
+                            active
+                              ? 'text-white border-transparent shadow-md'
+                              : 'bg-card border-border hover:border-slate-400 text-foreground'
+                          }`}
+                          style={active ? { backgroundColor: effect.color, borderColor: effect.color } : {}}
+                        >
+                          {effect.name}
+                          <span
+                            className={`block text-[11px] font-normal mt-0.5 leading-snug ${
+                              active ? 'text-white/75' : 'text-muted-foreground'
+                            }`}
+                          >
+                            {effect.desc}
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 mt-auto">
+                {/* Action buttons */}
+                <div className="flex flex-col mt-2">
                   <button
-                    onClick={() => { setIsActive(false); setActiveEffect(null); }}
-                    className="py-3.5 rounded-xl font-bold text-sm bg-surface border border-border text-foreground hover:bg-red-500 hover:text-white hover:border-red-500 transition flex items-center justify-center gap-2 shadow-sm"
+                    onClick={handleStop}
+                    className="w-full py-3.5 rounded-xl font-bold text-sm border-2 border-border bg-card hover:bg-red-500 hover:text-white hover:border-red-500 transition flex items-center justify-center gap-2 shadow-sm"
                   >
-                    <Ban className="w-4 h-4" /> Stop
-                  </button>
-                  <button
-                    className="py-3.5 rounded-xl font-bold text-sm bg-jeewan-calm text-white hover:bg-blue-600 transition flex items-center justify-center gap-2 shadow-sm"
-                  >
-                    <Download className="w-4 h-4" /> Capture
+                    <Ban className="w-4 h-4" /> Stop Simulation
                   </button>
                 </div>
-                
-                <div className="bg-muted rounded-xl p-4 mt-4">
-                  <div className="flex gap-3">
-                    <AlertTriangle className="w-4 h-4 text-jeewan-muted flex-shrink-0 mt-0.5" />
-                    <p className="text-[10px] text-jeewan-muted leading-relaxed">
-                      <strong>Educational Context:</strong> These effects simulate documented long-term physical damage caused by drug abuse. 
-                    </p>
-                  </div>
+
+                {/* Disclaimer */}
+                <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl p-3.5 flex gap-2.5">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                  <p className="text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed">
+                    <strong>Educational use only.</strong> Simulates documented
+                    physical damage from long-term drug abuse. No data leaves your
+                    device.
+                  </p>
                 </div>
+
               </div>
             )}
-            
           </div>
         </div>
       </div>

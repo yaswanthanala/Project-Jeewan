@@ -25,7 +25,7 @@ const FALLBACK_LEADERBOARD: LeaderboardEntry[] = [
 const USER_COLLEGE = { rank: 7, name: 'Your College', students: 234, points: 28400 };
 
 export default function LeaderboardPage() {
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>(FALLBACK_LEADERBOARD);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
 
   useEffect(() => {
     async function fetchLeaderboard() {
@@ -60,24 +60,30 @@ export default function LeaderboardPage() {
 
         {/* Rankings */}
         <div className="space-y-2.5 mb-4">
-          {leaderboard.map((inst: LeaderboardEntry) => (
-            <div key={inst.rank} className={`flex items-center gap-3 p-4 rounded-2xl border transition ${
-              inst.rank === 1 ? 'bg-gradient-to-r from-jeewan-amber-light to-white dark:to-card border-[#FAC775]' : 'bg-card border-border'
-            }`}>
-              <div className="text-xl font-bold w-8 text-center">{inst.badge || `#${inst.rank}`}</div>
-              <div className="flex-1 min-w-0">
-                <h3 className="font-bold text-sm text-foreground truncate">{inst.name}</h3>
-                <p className="text-[10px] text-jeewan-muted">{inst.students} students · {inst.points.toLocaleString()} pts</p>
-              </div>
-              {inst.change && (
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                  inst.change.includes('↑') ? 'bg-jeewan-nature-light text-jeewan-nature' : 'bg-muted text-jeewan-muted'
-                }`}>
-                  {inst.change}
-                </span>
-              )}
+          {leaderboard.length === 0 ? (
+            <div className="text-center py-10 bg-card border border-border rounded-2xl text-sm text-jeewan-muted">
+              Live leaderboard is currently empty. Start taking pledges to rank!
             </div>
-          ))}
+          ) : (
+            leaderboard.map((inst: LeaderboardEntry) => (
+              <div key={inst.rank} className={`flex items-center gap-3 p-4 rounded-2xl border transition ${
+                inst.rank === 1 ? 'bg-gradient-to-r from-jeewan-amber-light to-white dark:to-card border-[#FAC775]' : 'bg-card border-border'
+              }`}>
+                <div className="text-xl font-bold w-8 text-center">{inst.badge || `#${inst.rank}`}</div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-bold text-sm text-foreground truncate">{inst.name}</h3>
+                  <p className="text-[10px] text-jeewan-muted">{inst.students} students · {inst.points.toLocaleString()} pts</p>
+                </div>
+                {inst.change && (
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                    inst.change.includes('↑') ? 'bg-jeewan-nature-light text-jeewan-nature' : 'bg-muted text-jeewan-muted'
+                  }`}>
+                    {inst.change}
+                  </span>
+                )}
+              </div>
+            ))
+          )}
 
           {/* Your College - Highlighted */}
           <div className="flex items-center gap-3 p-4 rounded-2xl bg-jeewan-calm-light border-2 border-jeewan-calm-mid">

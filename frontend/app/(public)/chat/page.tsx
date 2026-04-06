@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Send, Loader2, Shield, Trash2, AlertTriangle, MessageSquareHeart } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import Link from 'next/link';
+import { useLanguage } from '@/lib/i18n';
 
 interface Message {
   id: string;
@@ -28,6 +29,7 @@ const CHAT_API_URL = process.env.NEXT_PUBLIC_CHAT_URL || 'http://localhost:8003'
 
 export default function ChatPage() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const sessionId = user?.uid || `anon-${Date.now()}`;
 
   const [messages, setMessages] = useState<Message[]>([
@@ -41,9 +43,14 @@ export default function ChatPage() {
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Safe manual scroll to be called exactly when needed, preventing aggressive mid-reading jumps
+  // Safe manual scroll confined purely to the chat container
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTo({
+        top: chatContainerRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
   };
 
   // Load history from backend on mount
@@ -149,10 +156,10 @@ export default function ChatPage() {
                 <MessageSquareHeart className="w-6 h-6" />
               </div>
               <div>
-                <h1 className="font-bold text-lg text-foreground">JEEWAN AI Counsellor</h1>
+                <h1 className="font-bold text-lg text-foreground">{t('pg.chat.title' as any)}</h1>
                 <p className="text-sm text-jeewan-nature flex items-center gap-1.5 font-medium mt-0.5">
                   <span className="w-2 h-2 rounded-full bg-jeewan-nature inline-block animate-pulse" />
-                  {isLoading ? 'JEEWAN is typing...' : 'Online — Private & Secure'}
+                  {isLoading ? 'JEEWAN is typing...' : t('pg.chat.sub' as any)}
                 </p>
               </div>
             </div>
@@ -238,7 +245,7 @@ export default function ChatPage() {
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Message JEEWAN... (e.g. I need advice about peer pressure)"
+                placeholder={t('pg.chat.placeholder' as any)}
                 className="flex-1 p-4 pl-6 rounded-full border border-border bg-surface text-foreground text-[15px] focus:border-jeewan-calm focus:ring-4 focus:ring-jeewan-calm/10 transition outline-none shadow-inner"
                 disabled={isLoading}
                 autoFocus

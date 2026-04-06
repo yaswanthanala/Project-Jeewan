@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from prometheus_fastapi_instrumentator import Instrumentator
 from app.routes import sos
 from app.database import engine, Base
 
@@ -12,6 +13,8 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, 
 async def startup():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        
+Instrumentator().instrument(app).expose(app, endpoint="/metrics")
 
 
 app.include_router(sos.router, prefix="/sos", tags=["SOS"])
