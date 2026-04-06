@@ -53,6 +53,7 @@ pipeline {
                 sh '''
                     cd backend
                     pip install --break-system-packages -r requirements-test.txt
+                    for req in */requirements-test.txt; do pip install --break-system-packages -r "$req" || true; done
                     python3 -m pytest tests/test_auth.py tests/test_sos.py tests/test_chatbot.py tests/test_services.py \
                         -v --tb=short --junitxml=reports/unit-tests.xml --cov=. --cov-report=xml:reports/coverage.xml
                 '''

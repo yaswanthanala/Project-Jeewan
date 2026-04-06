@@ -4,3 +4,9 @@ httpx==0.28.1
 selenium==4.28.1
 webdriver-manager==4.0.2
 pytest-cov==6.1.1
+fastapi
+httpx
+pytest
+pytest-cov
+pytest-asyncio
+anyio
