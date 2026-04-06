@@ -3,8 +3,8 @@ pipeline {
 
     environment {
         DOCKER_REGISTRY = 'docker.io/jeewan'
-        SONARQUBE_URL   = 'http://172.17.0.1:9005'
-        SONAR_TOKEN     = 'sqp_410d8249fe38cee4e65f32cf72eb91220cf0d862'
+        SONARQUBE_URL   = 'http://localhost:9005'
+        SONAR_TOKEN     = 'sqp_60245e2a250fd9a117bedff252dfb1386800d44a'
     }
 
     stages {
@@ -37,11 +37,10 @@ pipeline {
                         for svc in auth sos chatbot gamification maps risk admin; do
                             cd backend/${svc} && \
                             sonar-scanner \
-                                -Dsonar.projectKey=jeewan-${svc}-ms \
-                                -Dsonar.sources=app/ \
-                                -Dsonar.host.url=${SONARQUBE_URL} \
-                                -Dsonar.login=${SONAR_TOKEN} \
-                                -Dsonar.python.version=3.12
+                                -Dsonar.projectKey=jeewan-platform \
+                                -Dsonar.sources=. \
+                                -Dsonar.host.url=http://localhost:9005 \
+                                -Dsonar.login=sqp_60245e2a250fd9a117bedff252dfb1386800d44a
                             cd ../..
                         done
                     '''
