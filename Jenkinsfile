@@ -28,8 +28,23 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 script {
-                    echo 'SonarQube Quality Gate: PASSED'
-                    echo 'Detailed telemetry has been successfully offloaded to http://localhost:9005 (jeewan-platform)'
+                    sh '''
+                        # Dynamically pull the authentic SonarScanner binary into the Jenkins worker workspace
+                        curl -sSLo sonar-scanner-cli.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-5.0.1.3006-linux.zip
+                        unzip -q -o sonar-scanner-cli.zip
+                        export PATH=$PATH:$(pwd)/sonar-scanner-5.0.1.3006-linux/bin
+                        
+                        for svc in auth sos chatbot gamification maps risk admin; do
+                            cd backend/${svc} && \
+                            sonar-scanner \
+                                -Dsonar.projectKey=jeewan-${svc}-ms \
+                                -Dsonar.sources=app/ \
+                                -Dsonar.host.url=${SONARQUBE_URL} \
+                                -Dsonar.token=${SONAR_TOKEN} \
+                                -Dsonar.python.version=3.12
+                            cd ../..
+                        done
+                    '''
                 }
             }
         }
@@ -38,8 +53,8 @@ pipeline {
             steps {
                 sh '''
                     cd backend
-                    pip install -r requirements-test.txt
-                    python -m pytest tests/test_auth.py tests/test_sos.py tests/test_chatbot.py tests/test_services.py \
+                    pip install --break-system-packages -r requirements-test.txt
+                    python3 -m pytest tests/test_auth.py tests/test_sos.py tests/test_chatbot.py tests/test_services.py \
                         -v --tb=short --junitxml=reports/unit-tests.xml --cov=. --cov-report=xml:reports/coverage.xml
                 '''
             }
