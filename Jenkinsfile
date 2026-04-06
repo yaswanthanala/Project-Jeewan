@@ -67,6 +67,13 @@ pipeline {
         stage('Component Tests — Frontend') {
             steps {
                 sh '''
+                    # Dynamically pull official NodeJS binary for Jenkins Linux worker
+                    wget -q https://nodejs.org/dist/v20.11.1/node-v20.11.1-linux-x64.tar.xz
+                    tar -xf node-v20.11.1-linux-x64.tar.xz
+                    export PATH=$PATH:$(pwd)/node-v20.11.1-linux-x64/bin
+                    
+                    # Authentically install yarn and build the frontend package
+                    npm install -g yarn
                     cd frontend
                     yarn install --frozen-lockfile
                     yarn build
