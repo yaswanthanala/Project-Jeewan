@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         DOCKER_REGISTRY = 'docker.io/jeewan'
-        SONARQUBE_URL   = 'http://sonarqube:9000'
+        SONARQUBE_URL   = 'http://172.17.0.1:9005'
         SONAR_TOKEN     = 'sqp_410d8249fe38cee4e65f32cf72eb91220cf0d862'
     }
 
