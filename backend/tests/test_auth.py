@@ -1,18 +1,31 @@
 """
 JEEWAN Backend — Pytest Unit Tests for Auth MS
 Tests: health, registration, login, guest token, demo accounts, RBAC
-Target: http://localhost:8001
+
+Uses FastAPI TestClient — no running server needed.
+The app is tested in-process, same way all other JEEWAN microservice
+tests work (sos, chatbot, services all pass for this reason).
 """
 import pytest
-import httpx
+from fastapi.testclient import TestClient
 
-BASE_URL = "http://localhost:8001"
+# Import the FastAPI app from auth microservice
+# Adjust the import path if your app entry point differs
+from auth.app.main import app
+
+import uuid
+
+# Unique suffix per test run to avoid email-already-exists conflicts
+RUN_ID = uuid.uuid4().hex[:8]
 
 
 @pytest.fixture(scope="module")
 def client():
-    """Shared httpx client for all tests."""
-    with httpx.Client(base_url=BASE_URL, timeout=10.0) as c:
+    """
+    FastAPI TestClient — spins up the ASGI app in-process.
+    No docker-compose, no ports, no network needed.
+    """
+    with TestClient(app) as c:
         yield c
 
 
@@ -58,16 +71,16 @@ class TestRegistration:
 
     def test_register_missing_fields_returns_422(self, client):
         r = client.post("/auth/register", json={})
-        assert r.status_code == 422  # Validation error
+        assert r.status_code == 422  # Pydantic validation error
 
     def test_register_valid_user(self, client):
         r = client.post("/auth/register", json={
-            "email": f"test_{pytest.test_run_id}@jeewan.test",
+            "email": f"test_{RUN_ID}@jeewan.test",
             "password": "TestPass123!",
             "name": "Test User",
             "role": "user",
         })
-        # Either 200 (success), 409 (already exists), or 422 (extra fields needed) are acceptable
+        # 200/201 = success, 409/400 = already exists, 422 = extra fields needed
         assert r.status_code in [200, 201, 409, 400, 422]
 
 
@@ -84,7 +97,3 @@ class TestLogin:
     def test_login_missing_fields(self, client):
         r = client.post("/auth/login", json={})
         assert r.status_code == 422
-
-
-# Generate unique test run ID
-pytest.test_run_id = id(pytest)
