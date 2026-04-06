@@ -86,7 +86,7 @@ pipeline {
                 withCredentials([file(credentialsId: 'jeewan-dotenv', variable: 'ENV_FILE')]) {
                     sh '''
                         cd backend
-                        cp $ENV_FILE .env
+                        cp "$ENV_FILE" .env
                         docker-compose up -d
                         sleep 15
                         
@@ -128,7 +128,7 @@ pipeline {
             steps {
                 withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBE_FILE')]) {
                     sh '''
-                        export KUBECONFIG=$KUBE_FILE
+                        export KUBECONFIG="$KUBE_FILE"
                         kubectl apply -f k8s/namespace.yaml
                         kubectl apply -f k8s/ --recursive
                         kubectl rollout status deployment/auth-ms -n jeewan --timeout=120s
