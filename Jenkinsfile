@@ -56,20 +56,29 @@ pipeline {
             }
         }
 
-        // ── Fix 1: No .env copy needed — TestClient runs in-process ──────────
-        // ── Fix 2: No withCredentials block needed here anymore ───────────────
-        // ── Fix 3: mkdir -p ensures reports/ dir exists before pytest runs ────
+        // ── Fix: Pytests legitimately require the network containers to test effectively!
+        // ── The tests use `httpx.Client(base_url="http://localhost:800X")`!
         stage('Unit Tests — Backend') {
             steps {
-                sh '''
-                    cd backend
-                    mkdir -p reports
-                    pip install --break-system-packages -r requirements-test.txt
-                    python3 -m pytest tests/test_auth.py tests/test_sos.py tests/test_chatbot.py tests/test_services.py \
-                        -v --tb=short \
-                        --junitxml=reports/unit-tests.xml \
-                        --cov=. --cov-report=xml:reports/coverage.xml
-                '''
+                withCredentials([file(credentialsId: 'jeewan-dotenv', variable: 'ENV_FILE')]) {
+                    sh '''
+                        cd backend
+                        mkdir -p reports
+                        
+                        # Bypass "Permission denied" correctly by the temporary file pipeline
+                        cp "$ENV_FILE" .env.tmp && mv .env.tmp .env
+                        docker-compose up -d
+                        
+                        echo "Waiting for services to spin up for backend Pytest suite..."
+                        timeout 60 bash -c "until curl -sf http://localhost:8001/health; do sleep 2; done" || true
+
+                        pip install --break-system-packages -r requirements-test.txt
+                        python3 -m pytest tests/test_auth.py tests/test_sos.py tests/test_chatbot.py tests/test_services.py \
+                            -v --tb=short \
+                            --junitxml=reports/unit-tests.xml \
+                            --cov=. --cov-report=xml:reports/coverage.xml
+                    '''
+                }
             }
             post {
                 always {
@@ -97,30 +106,15 @@ pipeline {
 
         stage('Selenium E2E Tests') {
             steps {
-                withCredentials([file(credentialsId: 'jeewan-dotenv', variable: 'ENV_FILE')]) {
-                    sh '''
-                        cd backend
-                        # Fix 5: copy to a temp file first, then move — avoids
-                        # "Permission denied" when Jenkins can't overwrite .env directly
-                        cp "$ENV_FILE" .env.tmp && mv .env.tmp .env
+                sh '''
+                    cd frontend && yarn dev &
+                    sleep 8
 
-                        docker-compose up -d
-
-                        # Fix 6: poll until backend is actually ready instead of blind sleep
-                        echo "Waiting for services to be healthy..."
-                        timeout 60 bash -c "until curl -sf http://localhost:8001/health; do sleep 2; done" \
-                            || echo "Auth service did not respond in time, continuing anyway"
-
-                        export PATH=$PATH:$(pwd)/../node-v20.11.1-linux-x64/bin
-                        cd ../frontend && yarn dev &
-                        sleep 8
-
-                        cd ../backend
-                        mkdir -p reports
-                        # Fix 7: removed || echo bypass — real failures now surface
-                        python3 -m pytest tests/e2e/ -v --junitxml=reports/selenium.xml
-                    '''
-                }
+                    cd ../backend
+                    mkdir -p reports
+                    # Fix 7: removed || echo bypass — real failures now surface
+                    python3 -m pytest tests/e2e/ -v --junitxml=reports/selenium.xml
+                '''
             }
             post {
                 always {
