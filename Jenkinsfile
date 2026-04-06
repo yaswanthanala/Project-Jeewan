@@ -53,7 +53,8 @@ pipeline {
                 withCredentials([file(credentialsId: 'jeewan-dotenv', variable: 'ENV_FILE')]) {
                     sh '''
                         cd backend
-                        cp "$ENV_FILE" .env
+                        rm -f .env || true
+                        cp -f "$ENV_FILE" .env
                         docker-compose up -d --build
                         sleep 15
                         
