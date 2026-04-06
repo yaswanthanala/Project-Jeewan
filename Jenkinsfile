@@ -67,7 +67,9 @@ pipeline {
                         
                         # Bypass "Permission denied" correctly by the temporary file pipeline
                         cp "$ENV_FILE" .env.tmp && mv .env.tmp .env
-                        docker-compose up -d
+                        
+                        # Specify strictly internal services to bypass Docker-in-Docker nginx volume mount kernel panic
+                        docker-compose up -d postgres redis auth-ms sos-ms chatbot-ms gamification-ms maps-ms risk-ms admin-ms
                         
                         echo "Waiting for services to spin up for backend Pytest suite..."
                         timeout 60 bash -c "until curl -sf http://localhost:8001/health; do sleep 2; done" || true
