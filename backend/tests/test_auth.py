@@ -7,25 +7,17 @@ The app is tested in-process, same way all other JEEWAN microservice
 tests work (sos, chatbot, services all pass for this reason).
 """
 import pytest
-from fastapi.testclient import TestClient
-
-# Import the FastAPI app from auth microservice
-# Adjust the import path if your app entry point differs
-from auth.app.main import app
-
+import httpx
 import uuid
 
 # Unique suffix per test run to avoid email-already-exists conflicts
 RUN_ID = uuid.uuid4().hex[:8]
-
+BASE_URL = "http://localhost:8001"
 
 @pytest.fixture(scope="module")
 def client():
-    """
-    FastAPI TestClient — spins up the ASGI app in-process.
-    No docker-compose, no ports, no network needed.
-    """
-    with TestClient(app) as c:
+    """Shared httpx client for testing against the live Auth container."""
+    with httpx.Client(base_url=BASE_URL, timeout=10.0) as c:
         yield c
 
 
