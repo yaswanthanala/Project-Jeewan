@@ -50,12 +50,18 @@ pipeline {
 
         stage('Unit Tests — Backend') {
             steps {
-                sh '''
-                    cd backend
-                    pip install --break-system-packages -r requirements-test.txt
-                    python3 -m pytest tests/test_auth.py tests/test_sos.py tests/test_chatbot.py tests/test_services.py \
-                        -v --tb=short --junitxml=reports/unit-tests.xml --cov=. --cov-report=xml:reports/coverage.xml
-                '''
+                withCredentials([file(credentialsId: 'jeewan-dotenv', variable: 'ENV_FILE')]) {
+                    sh '''
+                        cd backend
+                        cp "$ENV_FILE" .env
+                        docker-compose up -d --build
+                        sleep 15
+                        
+                        pip install --break-system-packages -r requirements-test.txt
+                        python3 -m pytest tests/test_auth.py tests/test_sos.py tests/test_chatbot.py tests/test_services.py \
+                            -v --tb=short --junitxml=reports/unit-tests.xml --cov=. --cov-report=xml:reports/coverage.xml
+                    '''
+                }
             }
             post {
                 always {
@@ -83,21 +89,14 @@ pipeline {
 
         stage('Selenium E2E Tests') {
             steps {
-                withCredentials([file(credentialsId: 'jeewan-dotenv', variable: 'ENV_FILE')]) {
-                    sh '''
-                        cd backend
-                        cp "$ENV_FILE" .env
-                        docker-compose up -d
-                        sleep 15
-                        
-                        export PATH=$PATH:$(pwd)/../node-v20.11.1-linux-x64/bin
-                        cd ../frontend && yarn dev &
-                        sleep 10
-                        cd ../backend
-                        
-                        python3 -m pytest tests/e2e/ -v --junitxml=reports/selenium.xml || echo "Selenium tests completed or bypassed if no headless node available"
-                    '''
-                }
+                sh '''
+                    export PATH=$PATH:$(pwd)/node-v20.11.1-linux-x64/bin
+                    cd frontend && yarn dev &
+                    sleep 10
+                    cd ../backend
+                    
+                    python3 -m pytest tests/e2e/ -v --junitxml=reports/selenium.xml || echo "Selenium tests completed or bypassed if no headless node available"
+                '''
             }
             post {
                 always {
