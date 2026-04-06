@@ -40,7 +40,7 @@ pipeline {
                                 -Dsonar.projectKey=jeewan-${svc}-ms \
                                 -Dsonar.sources=app/ \
                                 -Dsonar.host.url=${SONARQUBE_URL} \
-                                -Dsonar.token=${SONAR_TOKEN} \
+                                -Dsonar.login=${SONAR_TOKEN} \
                                 -Dsonar.python.version=3.12
                             cd ../..
                         done
