@@ -1,8 +1,20 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
+import os
+from motor.motor_asyncio import AsyncIOMotorClient
+from datetime import datetime, timezone
 
 router = APIRouter()
+
+# MongoDB connection established iteratively
+MONGO_URI = os.getenv("MONGO_URI")
+mongo_client = AsyncIOMotorClient(MONGO_URI) if MONGO_URI else None
+mongo_db = mongo_client.jeewan_tipoffs if mongo_client else None
+
+class TipOff(BaseModel):
+    description: str
+    location: str
 
 # Demo data for admin dashboard
 _demo_cases = [
@@ -93,13 +105,45 @@ async def get_nmba_analytics():
     }
 
 
+@router.post("/tipoffs")
+async def create_tipoff(payload: TipOff):
+    """Submit a securely fully anonymous tip-off locally or bound to MongoDB natively."""
+    tip = {
+        "description": payload.description,
+        "location": payload.location,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "status": "under_review"
+    }
+    
+    if mongo_db:
+        result = await mongo_db.reports.insert_one(tip)
+        tip["id"] = str(result.inserted_id)
+        if "_id" in tip: del tip["_id"]
+    else:
+        tip["id"] = "mock-tip-local"
+
+    return {"status": "received", "tipoff": tip, "mock": not bool(mongo_db)}
+
+
 @router.get("/tipoffs")
 async def get_tipoffs():
-    """Get anonymous tip-off reports (from MongoDB in production)."""
+    """Get anonymous tip-off reports persistently synced across MongoDB Atlas."""
+    if mongo_db:
+        cursor = mongo_db.reports.find().sort("_id", -1)
+        tipoffs = await cursor.to_list(length=100)
+        formatted = []
+        for t in tipoffs:
+            t["id"] = str(t["_id"])
+            del t["_id"]
+            formatted.append(t)
+        return {"tipoffs": formatted, "total": len(formatted), "mock": False}
+
+    # Isolated graceful degradation 
     return {
         "tipoffs": [
             {"id": "tip-001", "description": "Suspicious activity near college gate", "location": "NIT AP Campus", "timestamp": "2025-04-05T07:00:00Z", "status": "under_review"},
             {"id": "tip-002", "description": "Drug supply at hostel area", "location": "JNTU Kakinada", "timestamp": "2025-04-04T22:30:00Z", "status": "forwarded_to_police"},
         ],
         "total": 2,
+        "mock": True
     }

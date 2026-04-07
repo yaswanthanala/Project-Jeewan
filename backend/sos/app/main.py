@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
 from app.routes import sos
 from app.database import engine, Base
+import app.models  # Ensures SQLAlchemy metadata registers the Contact model
 
 app = FastAPI(title="JEEWAN SOS MS", version="1.0.0", description="SOS / Crisis microservice")
 

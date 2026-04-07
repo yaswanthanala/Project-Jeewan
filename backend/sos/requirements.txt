@@ -4,4 +4,6 @@ pydantic==2.11.3
 sqlalchemy==2.0.41
 asyncpg==0.30.0
 prometheus-client==0.22.1
+prometheus-fastapi-instrumentator==7.0.0
 httpx==0.28.1
+aiosmtplib==3.0.1
