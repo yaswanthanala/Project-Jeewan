@@ -34,8 +34,8 @@ services:
     ports:
       - "8001:8001"
     env_file: .env
-    # volumes:
-    #   - ./auth/firebase-service-account.json:/app/firebase-service-account.json:ro
+    volumes:
+      - ./auth/firebase-service-account.json:/app/firebase-service-account.json:ro
     depends_on:
       postgres:
         condition: service_healthy

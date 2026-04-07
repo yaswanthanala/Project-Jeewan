@@ -39,9 +39,6 @@ pipeline {
                          variable: 'FIREBASE_JSON')
                 ]) {
                     sh '''
-                        # Remove whatever exists there first (file OR directory)
-                        rm -rf backend/auth/firebase-service-account.json
-
                         # Copy into auth build context so Dockerfile COPY works
                         cp "$FIREBASE_JSON" backend/auth/firebase-service-account.json
 
