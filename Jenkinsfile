@@ -39,6 +39,9 @@ pipeline {
                          variable: 'FIREBASE_JSON')
                 ]) {
                     sh '''
+                        # Remove whatever exists there first (file OR directory)
+                        rm -rf backend/auth/firebase-service-account.json
+
                         # Copy into auth build context so Dockerfile COPY works
                         cp "$FIREBASE_JSON" backend/auth/firebase-service-account.json
 
@@ -95,8 +98,8 @@ pipeline {
                             for svc in auth sos chatbot gamification maps risk admin; do
                                 cd backend/${svc}
                                 sonar-scanner \
-                                    -Dsonar.projectKey=jeewan-${svc} \
-                                    -Dsonar.projectName="JEEWAN ${svc}" \
+                                    -Dsonar.projectKey=jeewan-platform \
+                                    -Dsonar.projectName="JEEWAN" \
                                     -Dsonar.sources=. \
                                     -Dsonar.python.version=3 \
                                     -Dsonar.host.url=${SONARQUBE_URL} \
