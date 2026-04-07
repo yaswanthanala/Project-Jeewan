@@ -138,7 +138,7 @@ export default function VolunteerPage() {
           {[
             { href: '/stories', icon: BookHeart, label: 'Share a Story', desc: 'Help others by sharing', color: 'bg-jeewan-nature-light text-jeewan-nature' },
             { href: '/tipoff', icon: ClipboardList, label: 'File a Report', desc: 'Anonymous tip-off', color: 'bg-jeewan-warn-light text-jeewan-warn' },
-            { href: '/chat', icon: MessageCircle, label: 'Assist a Session', desc: 'Support the chatbot', color: 'bg-jeewan-calm-light text-jeewan-calm' },
+            { href: '/chat', icon: MessageCircle, label: 'Live Chat Support', desc: 'Assist users in real-time', color: 'bg-jeewan-calm-light text-jeewan-calm' },
           ].map((action, i) => {
             const Icon = action.icon;
             return (

@@ -1,10 +1,11 @@
 'use client';
 
 import { Shield, Calendar, Users, AlertTriangle, CheckCircle, Clock, MessageCircle, Video, Phone } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { riskAPI } from '@/lib/api';
 
 export default function CounsellorDashboardPage() {
-  const counsellor = {
+  const [counsellor, setCounsellor] = useState({
     name: 'Dr. Priya Sharma',
     initials: 'PS',
     specialization: 'Clinical Psychologist',
@@ -12,28 +13,110 @@ export default function CounsellorDashboardPage() {
     pendingCases: 3,
     resolvedThisWeek: 12,
     rating: 4.9,
-  };
+  });
 
   const [activeTab, setActiveTab] = useState<'upcoming' | 'flagged' | 'history'>('upcoming');
 
-  const upcomingSessions = [
+  const [upcomingSessions, setUpcomingSessions] = useState([
     { id: 1, patient: 'User #A291', time: 'Today, 4:00 PM', type: 'Video', status: 'confirmed', risk: 'moderate' },
     { id: 2, patient: 'User #B482', time: 'Today, 5:30 PM', type: 'Chat', status: 'confirmed', risk: 'low' },
     { id: 3, patient: 'User #C103', time: 'Tomorrow, 11:00 AM', type: 'Audio', status: 'pending', risk: 'high' },
     { id: 4, patient: 'User #D756', time: 'Tomorrow, 3:00 PM', type: 'Video', status: 'confirmed', risk: 'moderate' },
-  ];
+  ]);
 
-  const flaggedCases = [
+  const [flaggedCases, setFlaggedCases] = useState([
     { id: 2847, source: 'DAST-10 Quiz', score: '9/10', college: 'NIT AP', time: '2 hours ago', priority: 'high' },
     { id: 2843, source: 'SOS Trigger', score: 'N/A', college: 'JNTU Kakinada', time: '5 hours ago', priority: 'critical' },
     { id: 2840, source: 'DAST-10 Quiz', score: '7/10', college: 'IIT Tirupati', time: '1 day ago', priority: 'moderate' },
-  ];
+  ]);
 
-  const sessionHistory = [
+  const [sessionHistory, setSessionHistory] = useState([
     { patient: 'User #E912', date: 'Apr 3, 2025', type: 'Video', duration: '45 min', notes: 'Follow-up on progress' },
     { patient: 'User #F301', date: 'Apr 2, 2025', type: 'Chat', duration: '30 min', notes: 'Initial assessment completed' },
     { patient: 'User #G487', date: 'Apr 1, 2025', type: 'Audio', duration: '60 min', notes: 'Referred to rehab centre' },
-  ];
+  ]);
+
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Poll for real-time cases during the demo
+  useEffect(() => {
+    const fetchRealCases = async () => {
+      try {
+        const data = await riskAPI.getFlaggedCases();
+        if (data) {
+          // Map backend 'cases' (auto-flagged) to dashboard format
+          const mappedFlagged = data.cases.map((c: any) => ({
+            id: c.case_id.slice(0, 8),
+            source: 'DAST-10 Diagnostic',
+            score: `${c.score}/10`,
+            college: c.institution || 'Demo Campus',
+            time: 'Just Now (Real)',
+            priority: c.risk_level === 'severe' ? 'critical' : c.risk_level === 'high' ? 'high' : 'moderate'
+          }));
+
+          // Map backend 'booked' (explicit requests) to session format
+          const mappedBooked = data.booked.map((b: any) => ({
+            id: b.id.slice(0, 8),
+            patient: `Guest ${b.user_id.slice(0, 4)}`,
+            time: 'Requested Now',
+            type: 'Video',
+            status: 'pending',
+            risk: b.risk_level
+          }));
+
+          // Merge with demo data but keep only unique IDs
+          setFlaggedCases(prev => {
+            const existingIds = new Set(prev.map(p => p.id));
+            const newOnes = mappedFlagged.filter((f: any) => !existingIds.has(f.id));
+            return [...newOnes, ...prev];
+          });
+
+          setUpcomingSessions(prev => {
+            const existingIds = new Set(prev.map(p => p.id));
+            const newOnes = mappedBooked.filter((b: any) => !existingIds.has(b.id));
+            return [...newOnes, ...prev];
+          });
+        }
+      } catch (err) {
+        console.error('Failed to sync real-time cases:', err);
+      }
+    };
+
+    fetchRealCases();
+    const interval = setInterval(fetchRealCases, 10000); // 10s poll for demo
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleAcceptCase = (caseId: number, priority: string) => {
+    setFlaggedCases(prev => prev.filter(c => c.id !== caseId));
+    const newSession = {
+      id: Math.floor(Math.random() * 10000),
+      patient: `Patient #F-${caseId}`,
+      time: 'Today, Unscheduled',
+      type: 'Video',
+      status: 'confirmed',
+      risk: priority === 'critical' ? 'critical' : priority === 'high' ? 'high' : 'moderate'
+    };
+    setUpcomingSessions(prev => [newSession, ...prev]);
+    setCounsellor(prev => ({
+      ...prev,
+      pendingCases: Math.max(0, prev.pendingCases - 1),
+      todaySessions: prev.todaySessions + 1
+    }));
+  };
+
+  const handleReferCase = (caseId: number) => {
+    setFlaggedCases(prev => prev.filter(c => c.id !== caseId));
+    setCounsellor(prev => ({
+      ...prev,
+      pendingCases: Math.max(0, prev.pendingCases - 1)
+    }));
+    alert(`Case #${caseId} has been successfully referred tracking locally to Campus Admin.`);
+  };
+
+  const handleJoinSession = (patientName: string) => {
+    alert(`Initiating secure E2E encrypted network channel actively with ${patientName}...`);
+  };
 
   const getTypeIcon = (type: string) => {
     if (type === 'Video') return <Video className="w-3.5 h-3.5" />;
@@ -119,7 +202,7 @@ export default function CounsellorDashboardPage() {
                       {s.risk.toUpperCase()}
                     </span>
                     {s.status === 'confirmed' ? (
-                      <button className="px-3 py-1.5 bg-jeewan-calm text-white rounded-lg text-[10px] font-bold hover:bg-jeewan-calm/90 transition">
+                      <button onClick={() => handleJoinSession(s.patient)} className="px-3 py-1.5 bg-jeewan-calm text-white rounded-lg text-[10px] font-bold hover:bg-jeewan-calm/90 transition">
                         Join
                       </button>
                     ) : (
@@ -150,10 +233,10 @@ export default function CounsellorDashboardPage() {
                     <p className="text-[10px] text-jeewan-muted">{c.source} · Score: {c.score} · {c.college} · {c.time}</p>
                   </div>
                   <div className="flex gap-2">
-                    <button className="px-3 py-1.5 bg-jeewan-calm text-white rounded-lg text-[10px] font-bold hover:bg-jeewan-calm/90 transition">
+                    <button onClick={() => handleAcceptCase(c.id, c.priority)} className="px-3 py-1.5 bg-jeewan-calm text-white rounded-lg text-[10px] font-bold hover:bg-jeewan-calm/90 transition">
                       Accept
                     </button>
-                    <button className="px-3 py-1.5 border border-border text-foreground rounded-lg text-[10px] font-bold hover:bg-muted transition">
+                    <button onClick={() => handleReferCase(c.id)} className="px-3 py-1.5 border border-border text-foreground rounded-lg text-[10px] font-bold hover:bg-muted transition">
                       Refer
                     </button>
                   </div>

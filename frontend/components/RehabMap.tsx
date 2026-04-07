@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/button';
 import { MapPin, Filter } from 'lucide-react';
+import { mapsAPI } from '@/lib/api';
 
 // Dynamically import Leaflet to avoid SSR issues
 const DynamicMap = dynamic(() => import('./RehabMapInner'), {
@@ -62,14 +63,31 @@ export default function RehabMap() {
   const [centers, setCenters] = useState<RehabCenter[]>(SAMPLE_CENTERS);
 
   useEffect(() => {
-    // Get user's location
     navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setUserLocation([position.coords.latitude, position.coords.longitude]);
+      async (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        setUserLocation([lat, lng]);
+        try {
+          const data = await mapsAPI.nearby(lat, lng, 50000, 'all');
+          if (data?.centres?.length > 0) {
+            setCenters(data.centres.map((c: any) => ({
+              id: c.id.toString(),
+              name: c.name || 'Regional Rehab Clinic',
+              lat: c.lat,
+              lng: c.lng,
+              type: c.type === 'government' ? 'government' : 'private',
+              beds: Math.floor(Math.random() * 50) + 20,
+              services: ['De-addiction', 'Counselling'],
+              phone: c.phone || 'Contact Info Unavailable',
+            })));
+          }
+        } catch (e) {
+          console.error("Failed to fetch live maps data", e);
+        }
       },
       (error) => {
         console.log('[v0] Geolocation error:', error);
-        // Default to Delhi
         setUserLocation([28.6139, 77.2090]);
       }
     );

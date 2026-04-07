@@ -125,6 +125,9 @@ export const riskAPI = {
 
   getFlaggedCases: () =>
     request('risk', '/risk/flagged'),
+
+  bookSession: (data: any) =>
+    request('risk', '/risk/book-session', { method: 'POST', body: JSON.stringify(data) }),
 };
 
 // ─── Gamification MS (:8004) ───

@@ -15,17 +15,14 @@ interface Story {
   color: string;
 }
 
-// Demo data saved if needed later
-// const DEMO_STORIES: Story[] = [
-//   { id: '1', title: "Ravi's 3-year journey", description: 'From darkness to light — how family support changed everything.', duration: '4:32', category: 'Recovery', views: 2100, likes: 456, color: '#d4e8d4' },
-//   { id: '2', title: "Priya's story — college", description: 'How she resisted peer pressure and became an advocate.', duration: '3:10', category: 'Prevention', views: 1400, likes: 312, color: '#d4e0f0' },
-//   { id: '3', title: "A mother's perspective", description: 'Watching her son recover taught her about unconditional love.', duration: '6:45', category: 'Family', views: 3800, likes: 891, color: '#f0e4d4' },
-//   { id: '4', title: "Arjun's comeback story", description: 'Youth recovery program helped him rebuild his life.', duration: '5:20', category: 'Recovery', views: 4521, likes: 923, color: '#d4e8d4' },
-//   { id: '5', title: "Finding purpose after addiction", description: "Aisha's journey from rehab to social work.", duration: '4:05', category: 'Recovery', views: 2876, likes: 534, color: '#e0d4f0' },
-//   { id: '6', title: "Breaking the cycle", description: 'The Sharma family overcame generational addiction patterns.', duration: '7:30', category: 'Family', views: 5234, likes: 1102, color: '#f0e4d4' },
-// ];
-
-const STORIES: Story[] = [];
+const DEMO_STORIES: Story[] = [
+  { id: '1', title: "Ravi's 3-year journey", description: 'From darkness to light — how family support changed everything.', duration: '4:32', category: 'Recovery', views: 2100, likes: 456, color: '#d4e8d4' },
+  { id: '2', title: "Priya's story — college", description: 'How she resisted peer pressure and became an advocate.', duration: '3:10', category: 'Prevention', views: 1400, likes: 312, color: '#d4e0f0' },
+  { id: '3', title: "A mother's perspective", description: 'Watching her son recover taught her about unconditional love.', duration: '6:45', category: 'Family', views: 3800, likes: 891, color: '#f0e4d4' },
+  { id: '4', title: "Arjun's comeback story", description: 'Youth recovery program helped him rebuild his life.', duration: '5:20', category: 'Recovery', views: 4521, likes: 923, color: '#d4e8d4' },
+  { id: '5', title: "Finding purpose after addiction", description: "Aisha's journey from rehab to social work.", duration: '4:05', category: 'Recovery', views: 2876, likes: 534, color: '#e0d4f0' },
+  { id: '6', title: "Breaking the cycle", description: 'The Sharma family overcame generational addiction patterns.', duration: '7:30', category: 'Family', views: 5234, likes: 1102, color: '#f0e4d4' },
+];
 
 const CATEGORIES = ['All', 'Recovery', 'Prevention', 'Family'] as const;
 
@@ -33,8 +30,13 @@ export default function StoriesPage() {
   const { t } = useLanguage();
   const [liked, setLiked] = useState<Set<string>>(new Set());
   const [activeCategory, setActiveCategory] = useState<string>('All');
+  const [stories, setStories] = useState<Story[]>(DEMO_STORIES);
+  
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+  const [newDesc, setNewDesc] = useState('');
 
-  const filteredStories = activeCategory === 'All' ? STORIES : STORIES.filter(s => s.category === activeCategory);
+  const filteredStories = activeCategory === 'All' ? stories : stories.filter(s => s.category === activeCategory);
 
   const toggleLike = (id: string) => {
     const newLiked = new Set(liked);
@@ -51,10 +53,56 @@ export default function StoriesPage() {
             <h1 className="text-2xl md:text-3xl font-bold text-foreground">📣 {t('pg.stories.title' as any)}</h1>
             <p className="text-sm text-jeewan-muted mt-1">{t('pg.stories.sub' as any)}</p>
           </div>
-          <button className="hidden md:flex items-center gap-1.5 px-4 py-2 rounded-xl border border-jeewan-nature text-jeewan-nature text-sm font-medium hover:bg-jeewan-nature hover:text-white transition">
+          <button onClick={() => setIsModalOpen(true)} className="hidden md:flex items-center gap-1.5 px-4 py-2 rounded-xl border border-jeewan-nature text-jeewan-nature text-sm font-medium hover:bg-jeewan-nature hover:text-white transition">
             + Share Your Story
           </button>
         </div>
+
+        {/* Modal for adding a story */}
+        {isModalOpen && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-card w-full max-w-md p-6 rounded-2xl animate-float-up shadow-2xl">
+              <h2 className="text-xl font-bold mb-4">Share Your Journey</h2>
+              <input 
+                type="text" 
+                placeholder="Story Title" 
+                value={newTitle}
+                onChange={e => setNewTitle(e.target.value)}
+                className="w-full mb-3 p-3 rounded-xl border border-border bg-background focus:ring-2 focus:ring-jeewan-nature"
+              />
+              <textarea 
+                placeholder="Give hope to others by sharing your experiences..." 
+                value={newDesc}
+                onChange={e => setNewDesc(e.target.value)}
+                className="w-full mb-4 p-3 rounded-xl border border-border bg-background focus:ring-2 focus:ring-jeewan-nature h-32 resize-none"
+              />
+              <div className="flex gap-2">
+                <button onClick={() => setIsModalOpen(false)} className="flex-1 py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-muted">Cancel</button>
+                <button 
+                  onClick={() => {
+                    const newStory: Story = {
+                      id: Math.random().toString(),
+                      title: newTitle || 'Anonymous Journey',
+                      description: newDesc || 'No description provided.',
+                      duration: '2:00',
+                      category: 'Recovery',
+                      views: 0,
+                      likes: 0,
+                      color: '#d4e8d4'
+                    };
+                    setStories(prev => [newStory, ...prev]);
+                    setIsModalOpen(false);
+                    setNewTitle('');
+                    setNewDesc('');
+                  }}
+                  className="flex-1 py-2.5 bg-jeewan-nature text-white rounded-xl text-sm font-bold hover:bg-jeewan-nature/90"
+                >
+                  Publish Story
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Category Filter Chips */}
         <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
@@ -128,7 +176,7 @@ export default function StoriesPage() {
         <div className="mt-10 bg-gradient-to-r from-jeewan-calm to-jeewan-nature rounded-2xl p-6 md:p-8 text-center text-white">
           <h2 className="text-xl md:text-2xl font-bold mb-2">Your Story Matters</h2>
           <p className="text-white/80 text-sm mb-5">Have you overcome addiction? Share your journey and inspire others.</p>
-          <button className="px-6 py-2.5 bg-white text-jeewan-calm rounded-xl font-bold text-sm hover:bg-white/90 transition shadow-lg">
+          <button onClick={() => setIsModalOpen(true)} className="px-6 py-2.5 bg-white text-jeewan-calm rounded-xl font-bold text-sm hover:bg-white/90 transition shadow-lg">
             Share Your Story
           </button>
         </div>

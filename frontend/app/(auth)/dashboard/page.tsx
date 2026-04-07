@@ -5,12 +5,11 @@ import PledgeButton from '@/components/PledgeButton';
 import BadgeCard from '@/components/BadgeCard';
 import { TrendingUp, Award, Target, MessageCircle, MapPin, Calendar, ArrowRight } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { gameAPI, getUser } from '@/lib/api';
+import { gameAPI, getUser, riskAPI } from '@/lib/api';
 
 export default function DashboardPage() {
-  const savedUser = getUser();
   const [user, setUser] = useState({
-    name: savedUser?.name || 'User',
+    name: 'User',
     streak: 0,
     totalPoints: 0,
     badges: 0,
@@ -25,19 +24,40 @@ export default function DashboardPage() {
     { icon: '🌟', title: 'Recovery Star', description: 'Help 3 others', isEarned: false },
   ]);
 
+  const [bookedSessions, setBookedSessions] = useState<any[]>([]);
+
   useEffect(() => {
+    const savedUser = getUser();
+    if (savedUser) {
+      setUser(prev => ({ ...prev, name: savedUser.name || 'User' }));
+    }
     async function fetchData() {
       try {
-        const [streakData, badgeData] = await Promise.all([
+        const [streakData, badgeData, flaggedData] = await Promise.all([
           gameAPI.getStreak(savedUser?.id),
           gameAPI.getBadges(savedUser?.id),
+          riskAPI.getFlaggedCases(),
         ]);
         if (streakData) setUser(prev => ({ ...prev, streak: streakData.streak || 0 }));
         if (badgeData?.badges?.length) setUser(prev => ({ ...prev, badges: badgeData.count || 0 }));
+        
+        if (flaggedData?.booked) {
+          // Filter sessions for this user (or show last demo booking if anonymous)
+          const mySessions = flaggedData.booked.filter((b: any) => 
+            b.user_id === savedUser?.id || b.user_id === 'anonymous_demo'
+          );
+          setBookedSessions(mySessions);
+        }
       } catch {}
     }
     fetchData();
+
+    // Poll for demo consistency
+    const interval = setInterval(fetchData, 10000);
+    return () => clearInterval(interval);
   }, []);
+
+  const nextSession = bookedSessions[0];
 
   return (
     <div className="min-h-screen bg-background">
@@ -59,14 +79,14 @@ export default function DashboardPage() {
             <div className="flex gap-1.5">
               {[1,2,3,4,5,6,7].map((d) => (
                 <div key={d} className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold ${
-                  d <= 3 ? 'bg-white/90 text-jeewan-nature' : 'bg-white/20 border border-white/30'
+                   d <= 3 ? 'bg-white/90 text-jeewan-nature' : 'bg-white/20 border border-white/30'
                 }`}>
                   {d <= 3 ? '✓' : ''}
                 </div>
               ))}
               <span className="text-[10px] opacity-60 self-center ml-1">this week</span>
             </div>
-            <PledgeButton userId="arjun@example.com" initialStreak={user.streak} />
+            <PledgeButton userId={user.name} initialStreak={user.streak} />
           </div>
         </div>
 
@@ -96,16 +116,37 @@ export default function DashboardPage() {
 
         {/* Next Session */}
         <div className="bg-card border border-border rounded-xl p-4 flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <Calendar className="w-5 h-5 text-jeewan-calm" />
-            <div>
-              <h3 className="font-bold text-sm text-foreground">Next session</h3>
-              <p className="text-xs text-jeewan-muted">Dr. Priya Sharma · Thu 4:00 PM · Video</p>
-            </div>
-          </div>
-          <Link href="/counsellor" className="px-4 py-1.5 bg-jeewan-calm-light text-jeewan-calm rounded-full text-xs font-bold hover:bg-jeewan-calm hover:text-white transition">
-            Join
-          </Link>
+          {nextSession ? (
+            <>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-jeewan-calm/10 flex items-center justify-center">
+                  <Calendar className="w-5 h-5 text-jeewan-calm" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-foreground">Requested Session (Confirmed)</h3>
+                  <p className="text-xs text-jeewan-muted">Dr. Priya Sharma · Connecting you shortly · Video</p>
+                </div>
+              </div>
+              <span className="px-4 py-1.5 bg-jeewan-calm text-white rounded-full text-xs font-bold shadow-sm">
+                Awaiting
+              </span>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                  <Calendar className="w-5 h-5 text-jeewan-muted" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-foreground">No active sessions</h3>
+                  <p className="text-xs text-jeewan-muted">Take a quiz or talk to AI to get started.</p>
+                </div>
+              </div>
+              <Link href="/quiz" className="px-4 py-1.5 border border-border rounded-full text-xs font-bold hover:bg-muted transition">
+                Book Now
+              </Link>
+            </>
+          )}
         </div>
 
         {/* Quick Actions */}
@@ -113,6 +154,7 @@ export default function DashboardPage() {
           {[
             { href: '/quiz', icon: Target, label: 'Take Quiz', desc: 'Test your knowledge', gradient: 'from-jeewan-calm/10' },
             { href: '/chat', icon: MessageCircle, label: 'Chat Support', desc: 'Talk to AI counsellor', gradient: 'from-jeewan-nature/10' },
+            { href: '/counsellor', icon: Calendar, label: 'Book Counsellor', desc: 'Talk to a professional', gradient: 'from-jeewan-amber/10' },
             { href: '/maps', icon: MapPin, label: 'Find Rehab', desc: 'Nearest centres', gradient: 'from-jeewan-warn/10' },
             { href: '/ar', icon: Target, label: 'AR Simulation', desc: 'See drug effects', gradient: 'from-jeewan-amber/10' },
             { href: '/leaderboard', icon: Award, label: 'Leaderboard', desc: 'Institution rankings', gradient: 'from-jeewan-calm/10' },

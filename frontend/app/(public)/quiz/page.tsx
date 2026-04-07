@@ -9,16 +9,16 @@ import { riskAPI, getUser } from '@/lib/api';
 import { useLanguage } from '@/lib/i18n';
 
 const DAST_10_QUESTIONS = [
-  { id: 1, question: 'Have you used drugs other than those required for medical reasons?', answers: [{ value: 0, label: 'Never', description: 'No recreational use' }, { value: 1, label: 'Once or twice', description: 'Rare occurrence' }, { value: 2, label: 'Monthly', description: 'Occasional use' }, { value: 3, label: 'Weekly or more', description: 'Frequent use' }] },
-  { id: 2, question: 'Do you abuse more than one drug at a time?', answers: [{ value: 0, label: 'No', description: 'Single or none' }, { value: 1, label: 'Occasionally', description: 'Rarely combine' }, { value: 2, label: 'Sometimes', description: 'Occasional polyuse' }, { value: 3, label: 'Often', description: 'Frequent polyuse' }] },
-  { id: 3, question: 'Are you unable to stop using drugs when you want to?', answers: [{ value: 0, label: 'Not at all', description: 'Full control' }, { value: 1, label: 'Rarely', description: 'Usually can stop' }, { value: 2, label: 'Sometimes', description: 'Moderate difficulty' }, { value: 3, label: 'Often', description: 'Frequent inability' }] },
-  { id: 4, question: 'Have you had blackouts or flashbacks as a result of drug use?', answers: [{ value: 0, label: 'Never', description: 'No memory loss' }, { value: 1, label: 'Once or twice', description: 'Rare occurrence' }, { value: 2, label: 'Occasionally', description: 'Some incidents' }, { value: 3, label: 'Frequently', description: 'Regular occurrence' }] },
-  { id: 5, question: 'Do you ever feel bad about your drug abuse?', answers: [{ value: 0, label: 'Never', description: 'No guilt' }, { value: 1, label: 'Rarely', description: 'Occasional guilt' }, { value: 2, label: 'Sometimes', description: 'Moderate guilt' }, { value: 3, label: 'Often', description: 'Frequent guilt' }] },
-  { id: 6, question: 'Does your family ever complain about your involvement with drugs?', answers: [{ value: 0, label: 'Never', description: 'No complaints' }, { value: 1, label: 'Rarely', description: 'Occasional concern' }, { value: 2, label: 'Sometimes', description: 'Regular complaints' }, { value: 3, label: 'Often', description: 'Frequent conflicts' }] },
-  { id: 7, question: 'Have you neglected your family because of your use of drugs?', answers: [{ value: 0, label: 'Never', description: 'Prioritize family' }, { value: 1, label: 'Rarely', description: 'Occasional neglect' }, { value: 2, label: 'Sometimes', description: 'Moderate neglect' }, { value: 3, label: 'Often', description: 'Frequent neglect' }] },
-  { id: 8, question: 'Have you engaged in illegal activities to obtain drugs?', answers: [{ value: 0, label: 'Never', description: 'No illegal activity' }, { value: 1, label: 'Once', description: 'Single incident' }, { value: 2, label: 'Occasionally', description: 'Few incidents' }, { value: 3, label: 'Often', description: 'Frequent acts' }] },
-  { id: 9, question: 'Have you experienced withdrawal symptoms when you stopped taking drugs?', answers: [{ value: 0, label: 'Never', description: 'No withdrawal' }, { value: 1, label: 'Once', description: 'Single episode' }, { value: 2, label: 'Occasionally', description: 'Some episodes' }, { value: 3, label: 'Often', description: 'Regular withdrawal' }] },
-  { id: 10, question: 'Have you had medical problems as a result of your drug use?', answers: [{ value: 0, label: 'None', description: 'No health issues' }, { value: 1, label: 'Minor', description: 'Slight concerns' }, { value: 2, label: 'Moderate', description: 'Several issues' }, { value: 3, label: 'Serious', description: 'Significant problems' }] },
+  { id: 1, question: 'Have you used drugs other than those required for medical reasons?', answers: [{ value: 0, label: 'No', description: 'No recreational use' }, { value: 1, label: 'Yes', description: 'Used recreationally' }] },
+  { id: 2, question: 'Do you abuse more than one drug at a time?', answers: [{ value: 0, label: 'No', description: 'Single or none' }, { value: 1, label: 'Yes', description: 'Polysubstance use' }] },
+  { id: 3, question: 'Are you always able to stop using drugs when you want to?', answers: [{ value: 1, label: 'Yes', description: 'Full control' }, { value: 0, label: 'No', description: 'Difficulty stopping' }] },
+  { id: 4, question: 'Have you had blackouts or flashbacks as a result of drug use?', answers: [{ value: 0, label: 'No', description: 'No memory loss' }, { value: 1, label: 'Yes', description: 'Experienced blackouts' }] },
+  { id: 5, question: 'Do you ever feel bad or guilty about your drug use?', answers: [{ value: 0, label: 'No', description: 'No guilt' }, { value: 1, label: 'Yes', description: 'Feel guilty' }] },
+  { id: 6, question: 'Does your spouse (or parents) ever complain about your drug use?', answers: [{ value: 0, label: 'No', description: 'No complaints' }, { value: 1, label: 'Yes', description: 'Family concerns' }] },
+  { id: 7, question: 'Have you neglected your family because of your use of drugs?', answers: [{ value: 0, label: 'No', description: 'Prioritize family' }, { value: 1, label: 'Yes', description: 'Family neglect' }] },
+  { id: 8, question: 'Have you engaged in illegal activities to obtain drugs?', answers: [{ value: 0, label: 'No', description: 'No illegal activity' }, { value: 1, label: 'Yes', description: 'Illegal acts' }] },
+  { id: 9, question: 'Have you ever experienced withdrawal symptoms when you stopped?', answers: [{ value: 0, label: 'No', description: 'No withdrawal' }, { value: 1, label: 'Yes', description: 'Withdrawal symptoms' }] },
+  { id: 10, question: 'Have you had medical problems as a result of your drug use?', answers: [{ value: 0, label: 'No', description: 'No health issues' }, { value: 1, label: 'Yes', description: 'Medical complications' }] },
 ];
 
 export default function QuizPage() {
@@ -67,30 +67,37 @@ export default function QuizPage() {
 
             <div className="mb-6 p-6 bg-gradient-to-br from-jeewan-calm/10 to-jeewan-calm/5 rounded-2xl">
               <div className="text-4xl font-bold text-jeewan-calm mb-1">{totalScore}</div>
-              <p className="text-sm text-jeewan-muted">out of 30 points</p>
+              <p className="text-sm text-jeewan-muted">out of 10 points (DAST-10)</p>
             </div>
 
             <div className={`mb-6 p-5 rounded-2xl border-2 ${
-              riskLevel === 'high' ? 'bg-jeewan-warn-light border-jeewan-warn'
+              riskLevel === 'high' || riskLevel === 'severe' ? 'bg-jeewan-warn-light border-jeewan-warn'
               : riskLevel === 'moderate' ? 'bg-jeewan-amber-light border-jeewan-amber'
               : 'bg-jeewan-nature-light border-jeewan-nature'
             }`}>
               <h2 className={`font-bold text-lg mb-1 ${
-                riskLevel === 'high' ? 'text-jeewan-warn'
+                riskLevel === 'high' || riskLevel === 'severe' ? 'text-jeewan-warn'
                 : riskLevel === 'moderate' ? 'text-jeewan-amber'
                 : 'text-jeewan-nature'
               }`}>
-                {riskLevel === 'high' ? '⚠️ High Risk' : riskLevel === 'moderate' ? '⚠️ Moderate Risk' : '✅ Low Risk — Keep it up!'}
+                {riskLevel === 'severe' ? '🆘 Severe Addiction' : riskLevel === 'high' ? '⚠️ High Risk' : riskLevel === 'moderate' ? '⚠️ Moderate Risk' : '✅ Low Risk'}
               </h2>
-              <p className="text-sm text-jeewan-ink2 dark:text-jeewan-muted">
-                {riskLevel === 'high' ? 'Professional help is strongly recommended.'
-                : riskLevel === 'moderate' ? 'Consider speaking with a counsellor.'
-                : 'Sign up to track your progress and earn badges.'}
+              <p className="text-sm text-jeewan-ink2 dark:text-jeewan-muted font-medium italic">
+                {serverResult?.recommendation || (
+                  riskLevel === 'high' || riskLevel === 'severe' ? 'Professional help is strongly recommended.'
+                  : riskLevel === 'moderate' ? 'Consider speaking with a counsellor.'
+                  : 'No major intervention needed at this stage.'
+                )}
               </p>
+              {serverResult?.recommendation?.includes('NLP Analysis Verified') && (
+                <div className="mt-3 pt-3 border-t border-black/5 dark:border-white/5 flex items-center justify-center gap-1.5 text-[10px] font-bold text-jeewan-calm uppercase tracking-widest">
+                  <ShieldAlert className="w-3 h-3" /> AI Psychometric Analysis Active
+                </div>
+              )}
             </div>
 
-            {riskLevel !== 'low' && (
-              <button onClick={() => setShowGetHelpModal(true)} className="w-full bg-jeewan-calm hover:bg-jeewan-calm/90 text-white font-bold py-3 rounded-xl mb-3 transition">
+            {(riskLevel === 'high' || riskLevel === 'severe' || riskLevel === 'moderate') && (
+              <button onClick={() => setShowGetHelpModal(true)} className="w-full bg-jeewan-calm hover:bg-jeewan-calm/90 text-white font-bold py-3 rounded-xl mb-3 transition shadow-lg shadow-jeewan-calm/20">
                 Get Help Now
               </button>
             )}
@@ -110,7 +117,14 @@ export default function QuizPage() {
             </p>
           </div>
         </div>
-        {showGetHelpModal && <GetHelpModal isOpen onClose={() => setShowGetHelpModal(false)} />}
+        {showGetHelpModal && (
+          <GetHelpModal 
+            isOpen 
+            onClose={() => setShowGetHelpModal(false)} 
+            score={totalScore}
+            riskLevel={riskLevel}
+          />
+        )}
       </div>
     );
   }

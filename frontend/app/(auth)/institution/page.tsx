@@ -2,6 +2,7 @@
 
 import { Building2, Users, Trophy, Target, CalendarCheck, TrendingUp, Award, BarChart3 } from 'lucide-react';
 import Link from 'next/link';
+import { useState } from 'react';
 
 export default function InstitutionPage() {
   const institution = {
@@ -16,11 +17,21 @@ export default function InstitutionPage() {
     quizCompletion: 64,
   };
 
-  const drives = [
+  const [drives, setDrives] = useState([
     { name: 'Anti-Drug Week Rally', date: 'Mar 15, 2025', students: 320, status: 'completed' },
     { name: 'DAST-10 Screening Camp', date: 'Apr 5, 2025', students: 180, status: 'upcoming' },
     { name: 'Survivor Talk Series', date: 'Apr 20, 2025', students: 0, status: 'planned' },
-  ];
+  ]);
+
+  const handleScheduleDrive = () => {
+    const driveName = prompt("Enter the name of the new awareness drive:");
+    if (driveName) {
+      setDrives(prev => [
+        ...prev,
+        { name: driveName, date: 'TBD', students: 0, status: 'planned' }
+      ]);
+    }
+  };
 
   const topContributors = [
     { rank: 1, name: 'CSE Dept', points: 24800, students: 142 },
@@ -110,7 +121,7 @@ export default function InstitutionPage() {
         <div className="bg-card border border-border rounded-xl p-5">
           <div className="flex items-center justify-between mb-3">
             <p className="text-[10px] font-bold text-jeewan-muted uppercase tracking-wider">Awareness Drives</p>
-            <button className="px-3 py-1.5 bg-jeewan-nature text-white rounded-lg text-xs font-bold hover:bg-jeewan-nature/90 transition">
+            <button onClick={handleScheduleDrive} className="px-3 py-1.5 bg-jeewan-nature text-white rounded-lg text-xs font-bold hover:bg-jeewan-nature/90 transition">
               + Schedule Drive
             </button>
           </div>
